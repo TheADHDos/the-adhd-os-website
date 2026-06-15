@@ -202,23 +202,42 @@
   }
   .add-btn:hover { border-color: var(--accent-border); color: var(--accent); }
 
-  /* ——— REFRAME ——— */
-  .reframe-options { display: flex; flex-direction: column; gap: 8px; }
-  .reframe-opt {
-    background: var(--bg-secondary); border: 1px solid var(--surface-border);
-    border-radius: 10px; padding: 14px 18px;
-    font-size: 0.9rem; font-family: var(--font-sans);
-    color: var(--text-secondary); cursor: pointer;
-    text-align: left; line-height: 1.6; transition: all 0.2s;
-    display: flex; align-items: flex-start; gap: 12px;
+  /* ——— REFRAME (AI-generated) ——— */
+  .reframe-loading {
+    background: var(--bg-secondary);
+    border: 1px solid var(--surface-border);
+    border-radius: 10px; padding: 20px 22px;
+    display: flex; align-items: center; gap: 14px;
+    color: var(--text-muted);
+    font-family: var(--font-mono); font-size: 0.75rem;
+    letter-spacing: 0.06em;
   }
-  .reframe-opt:hover { border-color: var(--accent-border); color: var(--text-primary); background: var(--accent-dim); }
-  .reframe-opt.selected { border-color: var(--accent-border); background: var(--accent-dim); color: var(--text-primary); }
-  .reframe-num {
+  .reframe-spinner {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--surface-border-hover);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .reframe-generated {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    border-radius: 10px; padding: 22px 24px;
+    font-family: var(--font-serif); font-size: 1.125rem;
+    font-style: italic; color: var(--text-primary);
+    line-height: 1.6; letter-spacing: -0.01em;
+    display: none;
+  }
+
+  .reframe-error {
+    background: var(--bg-secondary);
+    border: 1px solid var(--surface-border);
+    border-radius: 10px; padding: 16px 18px;
     font-family: var(--font-mono); font-size: 0.6875rem;
-    color: var(--text-muted); padding-top: 3px; flex-shrink: 0; min-width: 16px;
+    color: var(--text-muted); letter-spacing: 0.04em;
+    display: none;
   }
-  .reframe-opt.selected .reframe-num { color: var(--accent); }
 
   /* ——— RATING (phase 4) ——— */
   .rating-row {
@@ -433,7 +452,7 @@
       <button class="btn-ghost" onclick="notTonight()">Not tonight — I'll rest</button>
     </div>
 
-    <!-- Phase 1: Evidence (swapped to first) -->
+    <!-- Phase 1: Evidence -->
     <div class="phase" id="phase-1">
       <div>
         <div class="phase-eyebrow">Step 1 of 5 — Evidence</div>
@@ -452,7 +471,7 @@
       <button class="btn-ghost" onclick="goTo(2)">Skip this step</button>
     </div>
 
-    <!-- Phase 2: Brain Dump (swapped to second, reframed as optional offload) -->
+    <!-- Phase 2: Brain Dump -->
     <div class="phase" id="phase-2">
       <div>
         <div class="phase-eyebrow">Step 2 of 5 — Offload <span style="color:var(--text-muted); font-size:0.6rem; letter-spacing:0.08em;"> — OPTIONAL</span></div>
@@ -464,33 +483,29 @@
       <button class="btn-ghost" onclick="goTo(3)" style="font-size:0.9375rem;">Nothing running — skip →</button>
     </div>
 
-    <!-- Phase 3: Reframe -->
+    <!-- Phase 3: Reframe (AI-generated) -->
     <div class="phase" id="phase-3">
       <div>
         <div class="phase-eyebrow">Step 3 of 5 — Handoff</div>
         <div class="phase-title">Rest is the <em>next productive act.</em></div>
       </div>
       <div class="summary-block" id="summary-block" style="display:none"></div>
-      <div class="phase-sub">Choose the frame that lands tonight:</div>
-      <div class="reframe-options">
-        <button class="reframe-opt" onclick="selectReframe(this,0)">
-          <span class="reframe-num">01</span>
-          Stopping now is how I set tomorrow's conditions. Sleep is the work.
-        </button>
-        <button class="reframe-opt" onclick="selectReframe(this,1)">
-          <span class="reframe-num">02</span>
-          The best version of me tomorrow starts with this decision tonight.
-        </button>
-        <button class="reframe-opt" onclick="selectReframe(this,2)">
-          <span class="reframe-num">03</span>
-          I captured what matters. It will be here. I don't have to hold it.
-        </button>
-        <button class="reframe-opt" onclick="selectReframe(this,3)">
-          <span class="reframe-num">04</span>
-          I built something today. Now I'm building the conditions to build again.
-        </button>
+
+      <!-- Loading state -->
+      <div class="reframe-loading" id="reframe-loading">
+        <div class="reframe-spinner"></div>
+        Reading your day…
       </div>
-      <button class="btn-primary" onclick="closeDay()">Close the day — good night.</button>
+
+      <!-- Generated reframe -->
+      <div class="reframe-generated" id="reframe-generated"></div>
+
+      <!-- Fallback on error -->
+      <div class="reframe-error" id="reframe-error">
+        Unable to generate a personalized reframe right now. Close the day anyway — you showed up.
+      </div>
+
+      <button class="btn-primary" id="close-day-btn" onclick="closeDay()" disabled>Close the day — good night.</button>
     </div>
 
     <!-- Phase 4: First Move Decision -->
@@ -581,7 +596,7 @@
       <button class="btn-ghost" onclick="goTo(0)">← Back</button>
     </div>
 
-    <!-- Phase 8b: Extension Active (minimal countdown) -->
+    <!-- Phase 8b: Extension Active -->
     <div class="phase" id="phase-8b">
       <div class="phase-eyebrow">Extension Active</div>
       <div class="phase-title" style="margin-top:6px; font-family: var(--font-mono); font-size: 2.5rem; letter-spacing: 0.08em;" id="extension-countdown">—</div>
@@ -623,16 +638,9 @@
 <script>
   // ——— STATE ———
   let currentPhase = 0;
-  let selectedReframeIdx = null;
+  let generatedReframe = null;  // Claude-generated reframe, carried through to Phase 6
   let selectedRating = null;
   let closeTime = null;
-
-  const reframes = [
-    "Stopping now is how I set tomorrow's conditions. Sleep is the work.",
-    "The best version of me tomorrow starts with this decision tonight.",
-    "I captured what matters. It will be here. I don't have to hold it.",
-    "I built something today. Now I'm building the conditions to build again."
-  ];
 
   const titles = [
     'Time to <em>begin wrapping up.</em>',
@@ -690,13 +698,60 @@
     const prevDot = document.getElementById('dot-' + currentPhase);
     if (prevDot) { prevDot.classList.remove('active'); prevDot.classList.add('done'); }
 
-    if (n === 3) buildSummary();
+    if (n === 3) {
+      buildSummary();
+      fetchReframe();   // kick off API call when entering Phase 3
+    }
 
     currentPhase = n;
     document.getElementById('phase-' + n).classList.add('active');
     const dot = document.getElementById('dot-' + n);
     if (dot) { dot.classList.remove('done'); dot.classList.add('active'); }
     document.getElementById('card-title').innerHTML = titles[n] || titles[0];
+  }
+
+  // ——— AI REFRAME ———
+  async function fetchReframe() {
+    const wins = Array.from(document.querySelectorAll('.win-row input'))
+      .map(i => i.value.trim()).filter(Boolean);
+    const dump = document.getElementById('braindump').value.trim();
+
+    const loadingEl  = document.getElementById('reframe-loading');
+    const generatedEl = document.getElementById('reframe-generated');
+    const errorEl    = document.getElementById('reframe-error');
+    const btn        = document.getElementById('close-day-btn');
+
+    // Reset state
+    loadingEl.style.display  = 'flex';
+    generatedEl.style.display = 'none';
+    errorEl.style.display    = 'none';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/.netlify/functions/reframe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wins, dump })
+      });
+
+      if (!res.ok) throw new Error('Function error: ' + res.status);
+
+      const data = await res.json();
+      generatedReframe = data.reframe;
+
+      loadingEl.style.display   = 'none';
+      generatedEl.style.display = 'block';
+      generatedEl.textContent   = generatedReframe;
+      btn.disabled = false;
+
+    } catch (err) {
+      console.error('Reframe fetch error:', err);
+      generatedReframe = 'Sleep is the work.';
+
+      loadingEl.style.display  = 'none';
+      errorEl.style.display    = 'block';
+      btn.disabled = false;
+    }
   }
 
   // ——— NOT TONIGHT ———
@@ -750,7 +805,6 @@
     const capture = document.getElementById('mvf-capture').value.trim();
     if (!capture) { goTo(6); return; }
 
-    // Write to localStorage as first move with noon expiry
     try {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -760,7 +814,6 @@
       }));
     } catch(e) {}
 
-    // Submit to Netlify
     const body = new URLSearchParams({
       'form-name':  'shutdown-sequence',
       'date':       dateString(),
@@ -780,7 +833,6 @@
       });
     } catch(e) {}
 
-    // Go to closing screen
     document.getElementById('phase-9').classList.remove('active');
     document.getElementById('phase-7').classList.add('active');
     currentPhase = 7;
@@ -811,9 +863,6 @@
   }
 
   // ——— URL PARAMETER ENTRY LOADING ———
-  // Reads ?entries= from Apple Shortcut, strips timestamps,
-  // pre-populates Step 1 win-list with staggered animation,
-  // and shows dynamic entry count header.
   function loadEntriesFromURL() {
     const params = new URLSearchParams(window.location.search);
     const raw = params.get('entries');
@@ -835,7 +884,6 @@
       return;
     }
 
-    // Staggered animated reveal
     activities.forEach((text, index) => {
       const row = document.createElement('div');
       row.className = 'win-row stagger';
@@ -845,7 +893,6 @@
       row.querySelector('input').value = text;
     });
 
-    // Dynamic header copy — adapts to volume
     const count = activities.length;
     const titleEl = document.getElementById('evidence-title');
     const countLine = document.getElementById('entry-count-line');
@@ -896,13 +943,15 @@
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  // ——— REFRAME ———
-  function selectReframe(btn, idx) {
-    document.querySelectorAll('.reframe-opt').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selectedReframeIdx = idx;
+  // ——— CLOSE DAY — carries generated reframe to Phase 6 ———
+  function closeDay() {
+    closeTime = nowString();
+    // Use Claude-generated reframe; fall back to default if something went wrong
+    const frame = generatedReframe || 'Sleep is the work.';
+    document.getElementById('final-frame').textContent = frame;
+    document.getElementById('final-meta').textContent = 'Closed at ' + closeTime;
+    goTo(4);
   }
-
 
   // ——— FIRST MOVE ———
   let firstMoveDecision = null;
@@ -911,32 +960,17 @@
     const val = document.getElementById('first-move-input').value.trim();
     firstMoveDecision = val || null;
 
-    // Write to localStorage with noon-of-following-day expiry
     if (firstMoveDecision) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(12, 0, 0, 0);
-      const payload = {
-        firstMove: firstMoveDecision,
-        expires: tomorrow.getTime()
-      };
+      const payload = { firstMove: firstMoveDecision, expires: tomorrow.getTime() };
       try {
         localStorage.setItem('shutdown_firstmove', JSON.stringify(payload));
-      } catch(e) {
-        // localStorage unavailable — silent fail, Netlify form still captures it
-      }
+      } catch(e) {}
     }
 
     goTo(5);
-  }
-
-  // ——— CLOSE DAY (go to rating phase) ———
-  function closeDay() {
-    closeTime = nowString();
-    const frame = selectedReframeIdx !== null ? reframes[selectedReframeIdx] : reframes[0];
-    document.getElementById('final-frame').textContent = frame;
-    document.getElementById('final-meta').textContent = 'Closed at ' + closeTime;
-    goTo(4);
   }
 
   // ——— RATING ———
@@ -956,7 +990,7 @@
     const dump = document.getElementById('braindump').value.trim();
     const wins = Array.from(document.querySelectorAll('.win-row input'))
       .map(i => i.value.trim()).filter(Boolean).join(' · ');
-    const frame = selectedReframeIdx !== null ? reframes[selectedReframeIdx] : '(none selected)';
+    const frame = generatedReframe || 'Sleep is the work.';
     const rating = skipRating ? '' : (selectedRating ? String(selectedRating) : '');
 
     const body = new URLSearchParams({
