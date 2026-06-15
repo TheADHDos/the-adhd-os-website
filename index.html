@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The ADHD O/S — Scaffolding for Millennial Working Parents</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ——— DESIGN TOKENS — ADHD O/S flavor: violet accent, same dark universe ——— */
+  :root {
+    --bg-primary: #07090E;
+    --bg-secondary: #0D1117;
+    --bg-card: #0F1419;
+    --bg-card-hover: #141C25;
+    --surface-border: #1C2636;
+    --surface-border-hover: #2A3A50;
+    --text-primary: #E8ECF1;
+    --text-secondary: #8492A6;
+    --text-muted: #4A5568;
+
+    /* Unique ADHD O/S accent: violet-indigo — distinct from IE lime, KJ cyan */
+    --accent: #A78BFA;
+    --accent-dim: rgba(167, 139, 250, 0.10);
+    --accent-glow: rgba(167, 139, 250, 0.06);
+    --accent-border: rgba(167, 139, 250, 0.18);
+    --accent-warm: #FB923C;
+    --accent-warm-dim: rgba(251, 146, 60, 0.10);
+
+    /* Brand family palette */
+    --accent-lime: #BFFF0A;
+    --accent-cyan: #22D3EE;
+
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-serif: 'Instrument Serif', serif;
+    --font-sans: 'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; font-size: 16px; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ——— NOISE OVERLAY ——— */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.5;
+  }
+
+  /* ——— GRID BG ——— */
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ——— UTILITY ——— */
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 40px; position: relative; z-index: 1; }
+
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    padding: 4px 12px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  .label-warm {
+    color: var(--accent-warm);
+    background: var(--accent-warm-dim);
+    border-color: rgba(251, 146, 60, 0.18);
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--surface-border);
+    margin: 0;
+  }
+
+  /* ——— ANIMATIONS ——— */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(28px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .anim-up { animation: fadeUp 0.75s ease-out forwards; opacity: 0; }
+  .anim-in { animation: fadeIn 0.6s ease-out forwards; opacity: 0; }
+  .d1 { animation-delay: 0.1s; }
+  .d2 { animation-delay: 0.2s; }
+  .d3 { animation-delay: 0.3s; }
+  .d4 { animation-delay: 0.4s; }
+  .d5 { animation-delay: 0.5s; }
+  .d6 { animation-delay: 0.6s; }
+  .d7 { animation-delay: 0.7s; }
+  .d8 { animation-delay: 0.8s; }
+
+  /* ——— NAV ——— */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 14px 40px;
+    background: rgba(7, 9, 14, 0.88);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--surface-border);
+    animation: fadeIn 0.5s ease-out;
+  }
+  nav .nav-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text-primary);
+  }
+  .logo-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #A78BFA, #7C3AED);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.04em;
+    flex-shrink: 0;
+  }
+  .logo-text {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+  .logo-text em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    list-style: none;
+  }
+  .nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 400;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text-primary); }
+  .nav-cta {
+    background: var(--accent) !important;
+    color: var(--bg-primary) !important;
+    font-weight: 600 !important;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 0.8125rem !important;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .nav-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* ——— HERO ——— */
+  .hero {
+    padding: 172px 0 96px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-glow {
+    position: absolute;
+    width: 800px;
+    height: 600px;
+    top: 0;
+    left: 50%;
+    transform: translateX(-55%);
+    background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-content { position: relative; max-width: 760px; }
+
+  .hero-eyebrow { margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  .hero-eyebrow-tag {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .hero-eyebrow-sep { color: var(--surface-border-hover); font-family: var(--font-mono); }
+
+  .hero h1 {
+    font-family: var(--font-serif);
+    font-size: 3.75rem;
+    font-weight: 400;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin-bottom: 28px;
+    color: var(--text-primary);
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-sub {
+    font-size: 1.0625rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    max-width: 620px;
+    font-weight: 300;
+    margin-bottom: 40px;
+  }
+  .hero-sub strong { color: var(--text-primary); font-weight: 500; }
+
+  .hero-ctas {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 36px;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: var(--bg-primary);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    padding: 14px 28px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-primary:hover { opacity: 0.92; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(167, 139, 250, 0.25); }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 400;
+    padding: 14px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 1px solid var(--surface-border);
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .btn-ghost:hover { color: var(--text-primary); border-color: var(--surface-border-hover); }
+
+  .hero-primary-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .btn-micro {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    margin-top: 10px;
+    letter-spacing: 0.04em;
+    padding-left: 2px;
+  }
+
+  .trust-strip {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding-top: 32px;
+    border-top: 1px solid var(--surface-border);
+  }
+  .trust-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .trust-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  .trust-dot.warm { background: var(--accent-warm); animation-delay: 1s; }
+  .trust-dot.muted { background: var(--text-muted); animation: none; }
+
+  /* ——— PROBLEM SECTION ——— */
+  .problem-section { padding: 96px 0; }
+  .section-header { margin-bottom: 56px; }
+  .section-header .label { margin-bottom: 16px; }
+  .section-header h2 {
+    font-family: var(--font-serif);
+    font-size: 2.5rem;
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    margin-bottom: 16px;
+  }
+  .section-header h2 em { font-style: italic; color: var(--accent); }
+  .section-header p {
+    font-size: 1.0625rem;
+    color: var(--text-secondary);
+    line-height: 1.75;
+    max-width: 560px;
+    font-weight: 300;
+  }
+
+  .problem-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .problem-card {
+    background: var(--bg-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .problem-card:hover {
+    border-color: var(--accent-border);
+    background: var(--bg-card-hover);
+  }
+  .problem-card-quote {
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    font-style: italic;
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .problem-card-mode {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .problem-bridge {
+    margin-top: 40px;
+    padding: 28px 32px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    border-radius: 12px;
+  }
+  .problem-bridge p {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: var(--text-secondary);
+  }
+  .problem-bridge strong { color: var(--text-primary); font-weight: 500; }
+
+  /* ——— POSITIONING SECTION ——— */
+  .positioning-section { padding: 96px 0; }
+  .arch-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-top: 48px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--surface-border);
+  }
+  .arch-col {
+    background: var(--bg-card);
+    padding: 36px 28px;
+    position: relative;
+  }
+  .arch-col:not(:last-child) { border-right: 1px solid var(--surface-border); }
+  .arch-num {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .arch-col h3 {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+  .arch-col p {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    font-weight: 300;
+  }
+  .arch-accent-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+
+  .reentry-callout {
+    margin-top: 20px;
+    padding: 24px 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--surface-border);
+    border-left: 3px solid var(--accent-warm);
+    border-radius: 0 12px 12px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .reentry-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .reentry-callout p {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.65;
+  }
+  .reentry-callout strong { color: var(--text-primary); font-weight: 500; }
+
+  /* ——— QUIZ / ASSESSMENT SECTION ——— */
+  .quiz-section { padding: 96px 0; }
+  .quiz-card {
+    background: var(--bg-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  .quiz-card-glow {
+    position: absolute;
+    width: 500px;
+    height: 300px;
+    top: -100px;
+    right: -100px;
+    background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .quiz-card-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  .quiz-left {
+    padding: 52px 48px;
+    border-right: 1px solid var(--surface-border);
+    position: relative;
+    z-index: 1;
+  }
+  .quiz-left .label { margin-bottom: 20px; }
+  .quiz-left h2 {
+    font-family: var(--font-serif);
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    margin-bottom: 16px;
+  }
+  .quiz-left h2 em { font-style: italic; color: var(--accent); }
+  .quiz-left p {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 28px;
+    font-weight: 300;
+  }
+  .quiz-deliverables {
+    list-style: none;
+    margin-bottom: 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .quiz-deliverables li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+  .quiz-deliverables li::before {
+    content: '→';
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .quiz-microcopy {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    margin-top: 12px;
+  }
+
+  .quiz-right {
+    padding: 52px 48px;
+    position: relative;
+    z-index: 1;
+  }
+  .quiz-right h3 {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .failure-modes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .failure-mode {
+    background: var(--bg-secondary);
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .failure-mode:hover {
+    border-color: var(--accent-border);
+    color: var(--text-primary);
+    background: var(--accent-dim);
+  }
+  .failure-mode-num {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    width: 20px;
+    flex-shrink: 0;
+  }
+
+  /* ——— FUNNEL / WHAT YOU GET ——— */
+  .funnel-section { padding: 96px 0; }
+  .funnel-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-top: 48px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--surface-border);
+  }
+  .funnel-step {
+    background: var(--bg-card);
+    padding: 36px 32px;
+    position: relative;
+  }
+  .funnel-step:not(:last-child) { border-right: 1px solid var(--surface-border); }
+  .funnel-step-num {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .funnel-step-num::after {
+    content: '';
+    height: 1px;
+    flex: 1;
+    background: var(--accent-border);
+  }
+  .funnel-step h3 {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+  .funnel-step .step-sub {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    letter-spacing: 0.04em;
+  }
+  .funnel-step p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    font-weight: 300;
+    margin-bottom: 16px;
+  }
+  .funnel-artifacts {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .funnel-artifacts li {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .funnel-artifacts li::before {
+    content: '·';
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* ——— COHORT PRE-SELL ——— */
+  .cohort-section { padding: 96px 0; }
+  .cohort-card {
+    background: var(--bg-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    padding: 56px 64px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cohort-card-glow {
+    position: absolute;
+    width: 400px;
+    height: 300px;
+    bottom: -100px;
+    right: -60px;
+    background: radial-gradient(ellipse, var(--accent-warm-dim) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .cohort-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: start;
+    position: relative;
+    z-index: 1;
+  }
+  .cohort-left .label { margin-bottom: 20px; }
+  .cohort-left h2 {
+    font-family: var(--font-serif);
+    font-size: 2.25rem;
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    margin-bottom: 16px;
+  }
+  .cohort-left h2 em { font-style: italic; color: var(--accent-warm); }
+  .cohort-left p {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    font-weight: 300;
+    margin-bottom: 24px;
+  }
+  .cohort-includes {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+  .cohort-includes li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+  .cohort-includes li::before {
+    content: '✓';
+    color: var(--accent-warm);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .cohort-right { display: flex; flex-direction: column; gap: 20px; }
+
+  .pricing-block {
+    background: var(--bg-secondary);
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    padding: 28px 28px;
+  }
+  .pricing-block-label {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .pricing-range {
+    font-family: var(--font-serif);
+    font-size: 1.875rem;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+  }
+  .pricing-sub {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .cohort-cta-area {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    border-radius: 12px;
+    padding: 28px;
+  }
+  .cohort-cta-area p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+  .waitlist-input-row {
+    display: flex;
+    gap: 8px;
+  }
+  .waitlist-input {
+    flex: 1;
+    background: var(--bg-primary);
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .waitlist-input:focus { border-color: var(--accent-border); }
+  .waitlist-input::placeholder { color: var(--text-muted); }
+  .waitlist-btn {
+    background: var(--accent-warm);
+    color: var(--bg-primary);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 12px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+  .waitlist-btn:hover { opacity: 0.9; }
+  .waitlist-micro {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    color: var(--text-muted);
+    margin-top: 10px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ——— SCIENCE & GOVERNANCE ——— */
+  .science-section { padding: 96px 0; }
+  .science-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 48px;
+    margin-bottom: 24px;
+  }
+  .science-card {
+    background: var(--bg-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    padding: 28px 28px;
+    transition: border-color 0.2s;
+  }
+  .science-card:hover { border-color: var(--accent-border); }
+  .science-card-num {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--accent);
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .science-card p {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  .disclaimer-block {
+    padding: 28px 32px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    border-left: 3px solid var(--text-muted);
+  }
+  .disclaimer-block p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.75;
+  }
+  .disclaimer-block strong { color: var(--text-secondary); font-weight: 500; }
+
+  /* ——— FOUNDER ——— */
+  .founder-section { padding: 96px 0; }
+  .founder-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .founder-left {
+    padding: 52px 48px;
+    border-right: 1px solid var(--surface-border);
+  }
+  .founder-left .label { margin-bottom: 20px; }
+  .founder-left h2 {
+    font-family: var(--font-serif);
+    font-size: 1.875rem;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    margin-bottom: 24px;
+  }
+  .founder-left h2 em { font-style: italic; color: var(--accent); }
+  .founder-left p {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.75;
+    font-weight: 300;
+    margin-bottom: 16px;
+  }
+
+  .founder-right {
+    padding: 52px 48px;
+    background: var(--bg-secondary);
+  }
+  .founder-right h3 {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .values-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .values-list li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .value-title {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+  .value-sub {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  /* ——— FAQ ——— */
+  .faq-section { padding: 96px 0; }
+  .faq-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 48px;
+  }
+  .faq-item {
+    background: var(--bg-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    padding: 28px 28px;
+    transition: border-color 0.2s;
+  }
+  .faq-item:hover { border-color: var(--accent-border); }
+  .faq-q {
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+  .faq-a {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  /* ——— FINAL CTA ——— */
+  .final-cta { padding: 96px 0; position: relative; }
+  .final-cta-glow {
+    position: absolute;
+    width: 600px;
+    height: 400px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .final-cta-card {
+    background: var(--bg-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    padding: 72px 80px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+  }
+  .final-cta-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .final-cta-card .label { margin-bottom: 20px; }
+  .final-cta-card h2 {
+    font-family: var(--font-serif);
+    font-size: 2.75rem;
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin-bottom: 16px;
+  }
+  .final-cta-card h2 em { font-style: italic; color: var(--accent); }
+  .final-cta-card p {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 40px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.7;
+    font-weight: 300;
+  }
+  .final-cta-btns {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 12px 22px;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 1px solid var(--surface-border-hover);
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .btn-secondary:hover { border-color: var(--accent-border); color: var(--accent); }
+
+  /* ——— FOOTER ——— */
+  footer {
+    padding: 48px 0 32px;
+    border-top: 1px solid var(--surface-border);
+  }
+  .footer-inner {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: 48px;
+    margin-bottom: 40px;
+  }
+  .footer-brand p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.65;
+    margin-top: 12px;
+    max-width: 260px;
+  }
+  .footer-col h4 {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+  .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .footer-col ul li a {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .footer-col ul li a:hover { color: var(--text-primary); }
+  .footer-bottom {
+    padding-top: 24px;
+    border-top: 1px solid var(--surface-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: gap;
+  }
+  .footer-bottom span {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+  .footer-disclaimer {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    max-width: 500px;
+    text-align: right;
+    line-height: 1.6;
+  }
+  .footer-family-links {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .footer-family-link {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s;
+  }
+  .footer-family-link:hover { color: var(--text-secondary); }
+  .footer-family-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ——— RESPONSIVE ——— */
+  @media (max-width: 900px) {
+    .hero h1 { font-size: 3rem; }
+    .arch-grid { grid-template-columns: 1fr; }
+    .arch-col:not(:last-child) { border-right: none; border-bottom: 1px solid var(--surface-border); }
+    .funnel-steps { grid-template-columns: 1fr; }
+    .funnel-step:not(:last-child) { border-right: none; border-bottom: 1px solid var(--surface-border); }
+    .cohort-inner { grid-template-columns: 1fr; gap: 40px; }
+    .founder-card { grid-template-columns: 1fr; }
+    .founder-left { border-right: none; border-bottom: 1px solid var(--surface-border); }
+    .quiz-card-inner { grid-template-columns: 1fr; }
+    .quiz-left { border-right: none; border-bottom: 1px solid var(--surface-border); }
+    .faq-grid { grid-template-columns: 1fr; }
+    .science-grid { grid-template-columns: 1fr; }
+    .footer-inner { grid-template-columns: 1fr 1fr; }
+    .cohort-card { padding: 40px 32px; }
+  }
+  @media (max-width: 640px) {
+    .container { padding: 0 20px; }
+    nav { padding: 12px 20px; }
+    .hero { padding: 140px 0 72px; }
+    .hero h1 { font-size: 2.25rem; }
+    .problem-grid { grid-template-columns: 1fr; }
+    .hero-ctas { flex-direction: column; align-items: flex-start; }
+    .final-cta-card { padding: 48px 32px; }
+    .final-cta-card h2 { font-size: 2rem; }
+    .footer-inner { grid-template-columns: 1fr; gap: 32px; }
+    .footer-bottom { flex-direction: column; gap: 12px; align-items: flex-start; }
+    .footer-disclaimer { text-align: left; }
+    .waitlist-input-row { flex-direction: column; }
+    .nav-links { gap: 16px; }
+    .nav-links li:not(:last-child):not(:nth-last-child(2)) { display: none; }
+    .cohort-card { padding: 32px 24px; }
+    .quiz-left, .quiz-right { padding: 36px 28px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<!-- ——— NAV ——— -->
+<nav>
+  <div class="nav-inner">
+    <a class="logo" href="#">
+      <div class="logo-mark">A/O</div>
+      <span class="logo-text">The ADHD <em>O/S</em></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#how-it-works">How It Works</a></li>
+      <li><a href="#what-you-get">What You'll Get</a></li>
+      <li><a href="#cohort">Cohort (May 2026)</a></li>
+      <li><a href="#science">Science & Safety</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a class="nav-cta" href="#assessment">Take the Assessment →</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ——— HERO ——— -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="hero-content">
+
+      <div class="hero-eyebrow anim-up d1">
+        <span class="label">Pre-Launch · May 2026 Cohort</span>
+        <span class="hero-eyebrow-sep">·</span>
+        <span class="hero-eyebrow-tag">For Diagnosed Millennial Working Parents</span>
+      </div>
+
+      <h1 class="anim-up d2">
+        Your old coping systems didn't fail.<br>
+        Your <em>life outgrew them.</em>
+      </h1>
+
+      <p class="hero-sub anim-up d3">
+        The ADHD Operating System is an <strong>evidence-guarded execution layer</strong> for diagnosed Millennial working parents — combining a practical protocol, a minimal daily dashboard, and coaching-led consistency. Rebuild your scaffolding for parenting + work — without willpower theater.
+      </p>
+
+      <div class="hero-ctas anim-up d4">
+        <div class="hero-primary-cta">
+          <a class="btn-primary" href="#assessment" id="assessment">Take the 2-Minute Scaffolding Assessment →</a>
+          <div class="btn-micro">Instant results · No diagnosis claims · Built for working parents</div>
+        </div>
+        <a class="btn-ghost" href="#newsletter-signup">Get the Biweekly Operating Notes</a>
+      </div>
+
+      <div class="trust-strip anim-in d5">
+        <div class="trust-item">
+          <span class="trust-dot"></span>
+          Non-clinical
+        </div>
+        <div class="trust-item">
+          <span class="trust-dot warm"></span>
+          Evidence-governed
+        </div>
+        <div class="trust-item">
+          <span class="trust-dot muted"></span>
+          Re-entry-first design
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ——— PROBLEM ——— -->
+<hr class="section-divider">
+<section class="problem-section" id="how-it-works">
+  <div class="container">
+    <div class="section-header anim-up">
+      <span class="label">The Problem</span>
+      <h2>ADHD breaks most systems at the <em>worst moment:</em> under load.</h2>
+      <p>Life-stage transitions don't just add complexity — they destabilize every workaround that was holding things together.</p>
+    </div>
+    <div class="problem-grid">
+      <div class="problem-card anim-up d2">
+        <div class="problem-card-quote">"What worked pre-kids collapses when routines become multi-threaded."</div>
+        <div class="problem-card-mode">Trigger: Life-stage shift</div>
+      </div>
+      <div class="problem-card anim-up d3">
+        <div class="problem-card-quote">"Planning isn't the issue. Starting, switching, returning is."</div>
+        <div class="problem-card-mode">Trigger: Executive function deficit</div>
+      </div>
+      <div class="problem-card anim-up d4">
+        <div class="problem-card-quote">"Tools multiply. Cognitive load skyrockets. Self-trust erodes."</div>
+        <div class="problem-card-mode">Trigger: System overload</div>
+      </div>
+      <div class="problem-card anim-up d5">
+        <div class="problem-card-quote">"A single missed step cascades into household chaos."</div>
+        <div class="problem-card-mode">Trigger: Single-point failure</div>
+      </div>
+    </div>
+    <div class="problem-bridge anim-up d6">
+      <p><strong>This isn't a character flaw.</strong> It's a systems mismatch: variable executive capacity vs. time-sensitive external demands. The scaffolding that once worked was built for a different version of your life.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ——— POSITIONING ——— -->
+<hr class="section-divider">
+<section class="positioning-section">
+  <div class="container">
+    <div class="section-header anim-up">
+      <span class="label">What It Is</span>
+      <h2>A systems intervention for <em>executive dysfunction.</em></h2>
+      <p>Not an app. Not a productivity hack. An architecture built around how your brain actually operates — and how real life actually disrupts it.</p>
+    </div>
+
+    <div class="arch-grid anim-up d2">
+      <div class="arch-col">
+        <div class="arch-accent-bar"></div>
+        <div class="arch-num">01 · Externalize</div>
+        <h3>Externalize executive functions</h3>
+        <p>Move time, priorities, sequencing, and working memory out of your brain. Reduce the cognitive tax of keeping everything in your head.</p>
+      </div>
+      <div class="arch-col">
+        <div class="arch-accent-bar"></div>
+        <div class="arch-num">02 · Feedback</div>
+        <h3>Design feedback loops</h3>
+        <p>Small signals → small corrections → stability (not perfection). The system tells you when you've drifted — before drift becomes derailment.</p>
+      </div>
+      <div class="arch-col">
+        <div class="arch-accent-bar"></div>
+        <div class="arch-num">03 · Reduce</div>
+        <h3>Reduce cognitive load by design</h3>
+        <p>Fewer decisions, fewer steps, fewer failure points. The minimum viable system that holds up under load — even on the bad days.</p>
+      </div>
+    </div>
+
+    <div class="reentry-callout anim-up d3">
+      <div class="reentry-icon">↩</div>
+      <p><strong>Re-entry-first:</strong> The system assumes you'll drop it sometimes. Restart paths are part of the design — not an afterthought. Dropout isn't failure here; it's expected input.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ——— QUIZ / ASSESSMENT ——— -->
+<hr class="section-divider">
+<section class="quiz-section" id="assessment">
+  <div class="container">
+    <div class="section-header anim-up">
+      <span class="label">Primary Conversion · Assessment</span>
+      <h2>Instant clarity: why your <em>scaffolding is failing now.</em></h2>
+    </div>
+
+    <div class="quiz-card anim-up d2">
+      <div class="quiz-card-glow"></div>
+      <div class="quiz-card-inner">
+        <div class="quiz-left">
+          <span class="label">2-Minute Assessment</span>
+          <h2>Find your <em>failure mode.</em><br>Get your next scaffold.</h2>
+          <p>Designed for busy working parents. Not a diagnostic tool. You'll leave with a concrete, specific next action — not a vague recommendation.</p>
+          <ul class="quiz-deliverables">
+            <li>Your Scaffolding Failure Mode (one of 4–6 types)</li>
+            <li>Your next best scaffold — 1 action you can do today</li>
+            <li>A 5-day build plan (mini-course invitation)</li>
+          </ul>
+          <a class="btn-primary" href="#">Start the Assessment →</a>
+          <div class="quiz-microcopy">2 minutes · Designed for busy working parents · Not a diagnostic tool</div>
+        </div>
+        <div class="quiz-right">
+          <h3>Example Failure Modes</h3>
+          <div class="failure-modes">
+            <div class="failure-mode">
+              <span class="failure-mode-num">01</span>
+              Time Blindness + Transition Collapse
+            </div>
+            <div class="failure-mode">
+              <span class="failure-mode-num">02</span>
+              Overwhelm / Priority Compression Failure
+            </div>
+            <div class="failure-mode">
+              <span class="failure-mode-num">03</span>
+              Working Memory Saturation
+            </div>
+            <div class="failure-mode">
+              <span class="failure-mode-num">04</span>
+              Avoidance + Emotional Interference
+            </div>
+            <div class="failure-mode">
+              <span class="failure-mode-num">05</span>
+              Planning-Execution Gap
+            </div>
+            <div class="failure-mode">
+              <span class="failure-mode-num">06</span>
+              System Drift (start strong → stop quickly)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ——— WHAT YOU GET / FUNNEL ——— -->
+<hr class="section-divider">
+<section class="funnel-section" id="what-you-get">
+  <div class="container">
+    <div class="section-header anim-up">
+      <span class="label">The Path</span>
+      <h2>Assessment → 5-day sprint → <em>operating cadence.</em></h2>
+      <p>Three sequential wins, each building on the last. No prerequisite reading. No 40-page workbook. Just the minimum effective dose.</p>
+    </div>
+
+    <div class="funnel-steps anim-up d2">
+      <div class="funnel-step">
+        <div class="funnel-step-num">Step 01</div>
+        <h3>Scaffolding Assessment</h3>
+        <div class="step-sub">Instant · Free · No email required</div>
+        <p>A failure-mode diagnosis of your system — not you. You'll know exactly where your scaffolding is breaking and why, within 2 minutes.</p>
+      </div>
+      <div class="funnel-step">
+        <div class="funnel-step-num">Step 02</div>
+        <h3>5-Day Mini-Course</h3>
+        <div class="step-sub">15 min/day · One artifact per day</div>
+        <p>"Rebuild Your Scaffolding in 5 Days." Each session ships a usable artifact you keep and operate.</p>
+        <ul class="funnel-artifacts">
+          <li>Day 1: 3 Anchors system</li>
+          <li>Day 2: One Big Thing + Two Tiny Things</li>
+          <li>Day 3: Transition cues</li>
+          <li>Day 4: Re-entry protocol</li>
+          <li>Day 5: Weekly planning ritual (minimum viable)</li>
+        </ul>
+      </div>
+      <div class="funnel-step">
+        <div class="funnel-step-num">Step 03</div>
+        <h3>Biweekly Operating Notes</h3>
+        <div class="step-sub">Ongoing · Evidence-grounded</div>
+        <p>Systems doctrine, templates, and micro-protocols — plus Barkley-grounded research translation that cuts through the noise.</p>
+        <ul class="funnel-artifacts">
+          <li>Operating Doctrine (systems thinking for ADHD life)</li>
+          <li>Tactics (templates + micro-protocols)</li>
+          <li>Research translation (Barkley-grounded, anti-slop)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ——— COHORT PRE-SELL ——— -->
+<hr class="section-divider">
+<section class="cohort-section" id="cohort">
+  <div class="container">
+    <div class="cohort-card anim-up">
+      <div class="cohort-card-glow"></div>
+      <div class="cohort-inner">
+        <div class="cohort-left">
+          <span class="label label-warm">Launching May 2026</span>
+          <h2>The Scaffolding Rebuild <em>Sprint.</em><br>30 days.</h2>
+          <p>For diagnosed Millennial working parents whose old systems no longer survive real life. Small cohort. Coaching-led. Built around re-entry from day one.</p>
+          <ul class="cohort-includes">
+            <li>2×/week 30-minute coaching-led sessions</li>
+            <li>Minimal dashboard + templates (yours to keep)</li>
+            <li>Community support + re-entry mechanics</li>
+            <li>Evidence governance — Barkley-aligned constraints + refer-out rules</li>
+          </ul>
+          <div style="font-size:0.875rem; color:var(--text-muted); line-height:1.65;">
+            Who it's for: diagnosed working parents with ADHD whose old scaffolding has collapsed under the weight of real, multi-threaded life.
+          </div>
+        </div>
+        <div class="cohort-right">
+          <div class="pricing-block">
+            <div class="pricing-block-label">Expected Pricing</div>
+            <div class="pricing-range">$299–$599</div>
+            <div class="pricing-sub">
+              Core cohort: ~$299–$399<br>
+              Premium (includes 1 short 1:1 calibration): ~$499–$599<br><br>
+              <em style="color:var(--text-muted);">Pricing reflects live coaching + small cohort capacity.</em>
+            </div>
+          </div>
+
+          <div class="cohort-cta-area" id="newsletter-signup">
+            <p>Enrollment opens May 2026. Limited seats. Get notified first — and get early access to the assessment before launch.</p>
+            <div class="waitlist-input-row">
+              <input class="waitlist-input" type="email" placeholder="you@email.com">
+              <button class="waitlist-btn">Notify Me</button>
+            </div>
+            <div class="waitlist-micro">Limited seats · No spam · Clear expectations</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ——— SCIENCE & GOVERNANCE ——— -->
+<hr class="section-divider">
+<section class="science-section" id="science">
+  <div class="container">
+    <div class="section-header anim-up">
+      <span class="label">Science & Safety</span>
+      <h2>Anti-slop by design: <em>evidence governance</em> built in.</h2>
+      <p>The ADHD O/S doesn't make claims it can't support. The guardrails are part of the architecture, not a disclaimer we added afterward.</p>
+    </div>
+
+    <div class="science-grid">
+      <div class="science-card anim-up d2">
+        <div class="science-card-num">01 · Foundation</div>
+        <p>Grounded in Dr. Russell Barkley's research on ADHD as executive function and self-regulation impairment — the most evidence-backed framework available for adult ADHD intervention design.</p>
+      </div>
+      <div class="science-card anim-up d3">
+        <div class="science-card-num">02 · Claims hygiene</div>
+        <p>The system includes explicit claims governance: what we can say, what we can't, and when to refer out. No outcome promises that aren't backed by the literature. No slop.</p>
+      </div>
+      <div class="science-card anim-up d4">
+        <div class="science-card-num">03 · AI as governance layer</div>
+        <p>AI is a compression and personalization tool, operating within evidence constraints — not a replacement for care, clinical support, or human judgment.</p>
+      </div>
+    </div>
+
+    <div class="disclaimer-block anim-up d5">
+      <p><strong>Not therapy. Not diagnosis. Not medication management.</strong> The ADHD O/S is non-clinical scaffolding designed to help you operationalize evidence-based principles in daily life. If you're in crisis or need clinical support, we'll point you to appropriate resources.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ——— FOUNDER ——— -->
+<hr class="section-divider">
+<section class="founder-section" id="about">
+  <div class="container">
+    <div class="founder-card anim-up">
+      <div class="founder-left">
+        <span class="label">About</span>
+        <h2>Built by a systems architect who <em>lives the constraints.</em></h2>
+        <p>15+ years designing GTM systems and marketing infrastructure for B2B SaaS companies — then building AI-native ventures. The same architectural instinct that goes into InflectionEngine goes into the ADHD O/S: durable over flashy, protocol over hacks.</p>
+        <p>Diagnosed. Working parent. Based in North Andover, MA. The ADHD O/S isn't a side project — it's the system I'm building to run my own life, made rigorous enough to be genuinely useful to others who share the constraints.</p>
+        <p>Design philosophy: if the system doesn't survive a bad week, it isn't a system. Everything here is built around that assumption.</p>
+      </div>
+      <div class="founder-right">
+        <h3>Values</h3>
+        <ul class="values-list">
+          <li>
+            <span class="value-title">Durable over flashy</span>
+            <span class="value-sub">Systems that hold up under real conditions, not demo conditions.</span>
+          </li>
+          <li>
+            <span class="value-title">Protocol over hacks</span>
+            <span class="value-sub">Repeatable structure, not tips that require motivation you don't have.</span>
+          </li>
+          <li>
+            <span class="value-title">Systems over willpower</span>
+            <span class="value-sub">Willpower is a depletable resource. Systems aren't.</span>
+          </li>
+          <li>
+            <span class="value-title">Re-entry over perfection</span>
+            <span class="value-sub">The question is never "did I drop it." It's "how fast can I restart."</span>
+          </li>
+          <li>
+            <span class="value-title">Evidence over enthusiasm</span>
+            <span class="value-sub">Barkley-grounded claims hygiene. No slop. No promises we can't back.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ——— FAQ ——— -->
+<hr class="section-divider">
+<section class="faq-section">
+  <div class="container">
+    <div class="section-header anim-up">
+      <span class="label">FAQ</span>
+      <h2>Questions worth <em>answering honestly.</em></h2>
+    </div>
+    <div class="faq-grid">
+      <div class="faq-item anim-up d2">
+        <div class="faq-q">Is this therapy?</div>
+        <div class="faq-a">No. The ADHD O/S is non-clinical scaffolding. It doesn't diagnose, treat, or manage a clinical condition. If you need therapy or psychiatric support, we'll point you to appropriate resources — that's built into the governance model.</div>
+      </div>
+      <div class="faq-item anim-up d3">
+        <div class="faq-q">Do I need a formal ADHD diagnosis?</div>
+        <div class="faq-a">A diagnosis is recommended. The system is designed around the clinical reality of ADHD as executive dysfunction — it's more precise, and more honest, to work with people who share that baseline.</div>
+      </div>
+      <div class="faq-item anim-up d4">
+        <div class="faq-q">Is this another productivity app?</div>
+        <div class="faq-a">No. It's a protocol + coaching + minimal dashboard. The distinction matters: apps require activation energy to use. This is an execution layer designed to survive the conditions when apps get abandoned.</div>
+      </div>
+      <div class="faq-item anim-up d5">
+        <div class="faq-q">What if I've tried everything and quit?</div>
+        <div class="faq-a">That's expected. Re-entry is built in from the start — not as a feature you unlock later. The system assumes dropout. Restart paths are part of the architecture, not an afterthought.</div>
+      </div>
+      <div class="faq-item anim-up d6">
+        <div class="faq-q">How is this different from ADHD coaching?</div>
+        <div class="faq-a">Coaching without protocol is highly dependent on the individual coach and session continuity. The ADHD O/S is protocolized, artifact-producing, and governance-constrained — you build something you own and can operate between sessions.</div>
+      </div>
+      <div class="faq-item anim-up d7">
+        <div class="faq-q">How is this different from Inflow, Tiimo, or Notion?</div>
+        <div class="faq-a">Those are tools. This is an execution layer. A hammer doesn't tell you what to build or how to come back after you set it down. The ADHD O/S provides the protocol, the consistency engine, and the restart path — tools are optional components inside it.</div>
+      </div>
+      <div class="faq-item anim-up d8">
+        <div class="faq-q">What does the AI do in this system?</div>
+        <div class="faq-a">Compression and personalization — within evidence constraints. It helps adapt templates to your specific life stage and failure mode. It doesn't make clinical claims, provide therapy, or operate outside the Barkley-grounded guardrails.</div>
+      </div>
+      <div class="faq-item anim-up d8">
+        <div class="faq-q">When does the cohort launch?</div>
+        <div class="faq-a">May 2026. Limited seats for the first cohort. Join the waitlist above to get notified first and access the assessment before public launch.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ——— FINAL CTA ——— -->
+<hr class="section-divider">
+<section class="final-cta">
+  <div class="final-cta-glow"></div>
+  <div class="container">
+    <div class="final-cta-card anim-up">
+      <span class="label">Get Started</span>
+      <h2>Get your scaffolding back online.<br><em>Start with 2 minutes.</em></h2>
+      <p>The assessment is free, instant, and doesn't require a diagnosis to take. You'll leave with a specific failure mode and a concrete next action.</p>
+      <div class="final-cta-btns">
+        <a class="btn-primary" href="#assessment">Take the Scaffolding Assessment →</a>
+        <a class="btn-secondary" href="#newsletter-signup">Join Operating Notes</a>
+        <a class="btn-secondary" href="#cohort">Notify me: May 2026 cohort</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ——— FOOTER ——— -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a class="logo" href="#">
+          <div class="logo-mark">A/O</div>
+          <span class="logo-text">The ADHD <em>O/S</em></span>
+        </a>
+        <p>Non-clinical scaffolding for diagnosed Millennial working parents. Evidence-governed. Re-entry-first. Built to survive real life.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#how-it-works">How It Works</a></li>
+          <li><a href="#what-you-get">What You'll Get</a></li>
+          <li><a href="#cohort">May 2026 Cohort</a></li>
+          <li><a href="#assessment">Take Assessment</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Learn</h4>
+        <ul>
+          <li><a href="#science">Science & Safety</a></li>
+          <li><a href="#">Operating Notes</a></li>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Brand Family</h4>
+        <ul>
+          <li><a href="https://inflectionengine.com" target="_blank">InflectionEngine</a></li>
+          <li><a href="https://kevinjaquith.com" target="_blank">Kevin Jaquith</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 The ADHD O/S · theadhdos.com</span>
+      <p class="footer-disclaimer">Not therapy. Not diagnosis. Not medication management. The ADHD O/S is non-clinical scaffolding. For clinical support, please consult a licensed professional.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

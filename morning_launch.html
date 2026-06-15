@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Morning Launch — The ADHD O/S</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #07090E;
+    --bg-secondary: #0D1117;
+    --bg-card: #0F1419;
+    --surface-border: #1C2636;
+    --surface-border-hover: #2A3A50;
+    --text-primary: #E8ECF1;
+    --text-secondary: #8492A6;
+    --text-muted: #4A5568;
+    --accent: #A78BFA;
+    --accent-dim: rgba(167,139,250,0.10);
+    --accent-glow: rgba(167,139,250,0.06);
+    --accent-border: rgba(167,139,250,0.20);
+    --accent-warm: #FB923C;
+    --accent-warm-dim: rgba(251,146,60,0.10);
+    --accent-warm-border: rgba(251,146,60,0.20);
+    --green: #34D399;
+    --green-dim: rgba(52,211,153,0.10);
+    --green-border: rgba(52,211,153,0.20);
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-serif: 'Instrument Serif', serif;
+    --font-sans: 'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:0; opacity:0.5;
+  }
+
+  .grid-bg {
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size:60px 60px;
+    pointer-events:none; z-index:0;
+  }
+
+  .glow-orb {
+    position:fixed;
+    width:600px; height:400px;
+    top:-100px; left:50%;
+    transform:translateX(-50%);
+    background:radial-gradient(ellipse, rgba(251,146,60,0.05) 0%, transparent 70%);
+    pointer-events:none; z-index:0;
+  }
+
+  /* ——— CARD ——— */
+  .card {
+    position:relative; z-index:1;
+    width:100%; max-width:580px;
+    background:var(--bg-card);
+    border:1px solid var(--surface-border);
+    border-radius:16px;
+    overflow:hidden;
+  }
+
+  .card-top-bar {
+    height:2px;
+    background:linear-gradient(90deg, var(--accent-warm), transparent);
+  }
+
+  .card-header {
+    padding:32px 40px 24px;
+    border-bottom:1px solid var(--surface-border);
+  }
+
+  .card-header-meta {
+    display:flex; align-items:center;
+    justify-content:space-between; margin-bottom:16px;
+  }
+
+  .label {
+    font-family:var(--font-mono);
+    font-size:0.6875rem; font-weight:500;
+    letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--accent-warm);
+    background:var(--accent-warm-dim);
+    border:1px solid var(--accent-warm-border);
+    padding:4px 10px; border-radius:4px;
+  }
+
+  .progress-dots { display:flex; gap:6px; align-items:center; }
+  .dot {
+    width:6px; height:6px; border-radius:50%;
+    background:var(--surface-border-hover);
+    transition:background 0.3s, transform 0.3s;
+  }
+  .dot.done { background:var(--text-muted); }
+  .dot.active { background:var(--accent-warm); transform:scale(1.25); }
+
+  .card-header h1 {
+    font-family:var(--font-serif);
+    font-size:1.625rem; font-weight:400;
+    line-height:1.2; letter-spacing:-0.02em;
+  }
+  .card-header h1 em { font-style:italic; color:var(--accent-warm); }
+
+  /* ——— BODY ——— */
+  .card-body { padding:36px 40px; }
+
+  .phase { display:none; flex-direction:column; gap:20px; }
+  .phase.active { display:flex; animation:fadeUp 0.35s ease-out forwards; }
+
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(16px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  .phase-eyebrow {
+    font-family:var(--font-mono); font-size:0.6875rem;
+    letter-spacing:0.10em; text-transform:uppercase; color:var(--text-muted);
+  }
+  .phase-title {
+    font-family:var(--font-serif); font-size:1.375rem;
+    font-weight:400; color:var(--text-primary);
+    line-height:1.3; letter-spacing:-0.02em; margin-top:6px;
+  }
+  .phase-title em { font-style:italic; color:var(--accent-warm); }
+  .phase-sub {
+    font-size:0.9375rem; color:var(--text-secondary);
+    line-height:1.75; font-weight:300;
+  }
+
+  /* ——— FIRST MOVE CARD ——— */
+  .first-move-card {
+    background:var(--bg-secondary);
+    border:1px solid var(--accent-warm-border);
+    border-radius:12px;
+    padding:24px 26px;
+    position:relative;
+    overflow:hidden;
+  }
+
+  .first-move-card::before {
+    content:'';
+    position:absolute;
+    top:0; left:0; right:0;
+    height:2px;
+    background:linear-gradient(90deg, var(--accent-warm), transparent);
+  }
+
+  .first-move-label {
+    font-family:var(--font-mono); font-size:0.625rem;
+    letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--accent-warm); margin-bottom:12px;
+    display:flex; align-items:center; gap:8px;
+  }
+
+  .first-move-label::before {
+    content:'';
+    width:6px; height:6px; border-radius:50%;
+    background:var(--accent-warm);
+    animation:pulse-warm 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-warm {
+    0%,100%{opacity:0.4} 50%{opacity:1}
+  }
+
+  .first-move-text {
+    font-family:var(--font-serif);
+    font-size:1.25rem; font-weight:400;
+    color:var(--text-primary); line-height:1.5;
+    letter-spacing:-0.01em;
+  }
+
+  .first-move-meta {
+    font-family:var(--font-mono); font-size:0.625rem;
+    color:var(--text-muted); letter-spacing:0.06em;
+    text-transform:uppercase; margin-top:12px;
+  }
+
+  /* ——— STATE BUTTONS ——— */
+  .state-grid {
+    display:grid; grid-template-columns:1fr 1fr 1fr;
+    gap:10px;
+  }
+
+  .state-btn {
+    background:var(--bg-secondary);
+    border:1px solid var(--surface-border);
+    border-radius:12px; padding:20px 12px;
+    cursor:pointer; transition:all 0.2s;
+    display:flex; flex-direction:column;
+    align-items:center; gap:10px;
+    text-align:center;
+  }
+
+  .state-btn:hover { border-color:var(--surface-border-hover); transform:translateY(-2px); }
+
+  .state-btn.foggy:hover, .state-btn.foggy.selected {
+    border-color:rgba(148,163,184,0.4);
+    background:rgba(148,163,184,0.06);
+  }
+  .state-btn.functional:hover, .state-btn.functional.selected {
+    border-color:var(--accent-warm-border);
+    background:var(--accent-warm-dim);
+  }
+  .state-btn.firedup:hover, .state-btn.firedup.selected {
+    border-color:var(--green-border);
+    background:var(--green-dim);
+  }
+
+  .state-icon { font-size:1.75rem; line-height:1; }
+
+  .state-label {
+    font-family:var(--font-mono); font-size:0.6875rem;
+    font-weight:600; letter-spacing:0.08em;
+    text-transform:uppercase;
+  }
+  .state-btn.foggy .state-label { color:#94A3B8; }
+  .state-btn.functional .state-label { color:var(--accent-warm); }
+  .state-btn.firedup .state-label { color:var(--green); }
+
+  .state-desc {
+    font-size:0.75rem; color:var(--text-muted); line-height:1.4;
+  }
+
+  /* ——— SCAFFOLD CARDS ——— */
+  .scaffold-card {
+    background:var(--bg-secondary);
+    border:1px solid var(--surface-border);
+    border-radius:10px; padding:18px 20px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+
+  .scaffold-label {
+    font-family:var(--font-mono); font-size:0.625rem;
+    letter-spacing:0.10em; text-transform:uppercase;
+    color:var(--text-muted);
+  }
+
+  .scaffold-text {
+    font-size:0.9375rem; color:var(--text-primary); line-height:1.6;
+  }
+
+  /* ——— MICRO STEPS ——— */
+  .micro-steps { display:flex; flex-direction:column; gap:8px; }
+
+  .micro-step {
+    background:var(--bg-secondary);
+    border:1px solid var(--surface-border);
+    border-radius:8px; padding:12px 16px;
+    display:flex; align-items:center; gap:12px;
+    font-size:0.9rem; color:var(--text-secondary);
+    line-height:1.5;
+  }
+
+  .step-num {
+    font-family:var(--font-mono); font-size:0.6875rem;
+    color:var(--text-muted); flex-shrink:0;
+    width:18px; text-align:right;
+  }
+
+  .micro-step.highlight {
+    border-color:var(--accent-warm-border);
+    background:var(--accent-warm-dim);
+    color:var(--text-primary);
+  }
+  .micro-step.highlight .step-num { color:var(--accent-warm); }
+
+  /* ——— REROUTE ——— */
+  .reroute-area { display:flex; flex-direction:column; gap:8px; }
+
+  textarea {
+    width:100%; background:var(--bg-secondary);
+    border:1px solid var(--surface-border); border-radius:10px;
+    padding:14px 16px; font-size:0.9375rem;
+    font-family:var(--font-sans); color:var(--text-primary);
+    resize:none; line-height:1.7; min-height:90px;
+    outline:none; transition:border-color 0.2s;
+  }
+  textarea:focus { border-color:var(--accent-warm-border); }
+  textarea::placeholder { color:var(--text-muted); }
+
+  /* ——— ACTIVATED STATE ——— */
+  .activated-frame {
+    font-family:var(--font-serif); font-size:1.5rem;
+    font-weight:400; font-style:italic;
+    color:var(--accent-warm); line-height:1.4;
+    letter-spacing:-0.02em;
+  }
+
+  .activated-move {
+    background:var(--bg-secondary);
+    border:1px solid var(--accent-warm-border);
+    border-radius:10px; padding:18px 20px;
+  }
+
+  .activated-move-label {
+    font-family:var(--font-mono); font-size:0.625rem;
+    letter-spacing:0.10em; text-transform:uppercase;
+    color:var(--accent-warm); margin-bottom:8px;
+  }
+
+  .activated-move-text {
+    font-family:var(--font-serif); font-size:1.125rem;
+    color:var(--text-primary); line-height:1.5;
+  }
+
+  /* ——— BUTTONS ——— */
+  .btn-primary {
+    width:100%; padding:15px 28px;
+    background:var(--accent-warm); color:var(--bg-primary);
+    font-family:var(--font-sans); font-size:0.9375rem;
+    font-weight:600; border:none; border-radius:10px;
+    cursor:pointer; transition:all 0.2s;
+    letter-spacing:-0.01em;
+  }
+  .btn-primary:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 8px 32px rgba(251,146,60,0.2); }
+  .btn-primary:active { transform:translateY(0); }
+  .btn-primary.green { background:var(--green); }
+  .btn-primary.green:hover { box-shadow:0 8px 32px rgba(52,211,153,0.2); }
+  .btn-primary:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+
+  .btn-ghost {
+    width:100%; padding:13px 28px;
+    background:transparent; color:var(--text-secondary);
+    font-family:var(--font-sans); font-size:0.875rem;
+    border:1px solid var(--surface-border); border-radius:10px;
+    cursor:pointer; transition:all 0.2s;
+  }
+  .btn-ghost:hover { color:var(--text-primary); border-color:var(--surface-border-hover); }
+
+  .btn-link {
+    background:none; border:none; cursor:pointer;
+    font-family:var(--font-mono); font-size:0.6875rem;
+    color:var(--text-muted); letter-spacing:0.06em;
+    text-transform:uppercase; text-decoration:underline;
+    text-underline-offset:3px; padding:0;
+    transition:color 0.2s;
+  }
+  .btn-link:hover { color:var(--text-secondary); }
+
+  .mini-divider { border:none; border-top:1px solid var(--surface-border); }
+
+  /* ——— SUBMIT STATUS ——— */
+  .submit-status {
+    font-family:var(--font-mono); font-size:0.6875rem;
+    letter-spacing:0.06em; text-align:center; padding:10px;
+    border-radius:6px; display:none;
+  }
+  .submit-status.ok { color:var(--green); background:var(--green-dim); border:1px solid var(--green-border); }
+  .submit-status.err { color:var(--accent-warm); background:var(--accent-warm-dim); border:1px solid var(--accent-warm-border); }
+
+  /* ——— FOOTER ——— */
+  .card-footer {
+    padding:16px 40px; border-top:1px solid var(--surface-border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .footer-brand {
+    font-family:var(--font-mono); font-size:0.6875rem;
+    color:var(--text-muted); letter-spacing:0.06em;
+    display:flex; align-items:center; gap:8px;
+  }
+  .footer-dot {
+    width:5px; height:5px; border-radius:50%;
+    background:var(--accent-warm);
+    animation:pulse-warm 3s ease-in-out infinite;
+  }
+  .footer-time {
+    font-family:var(--font-mono); font-size:0.6875rem;
+    color:var(--text-muted); letter-spacing:0.06em;
+  }
+
+  /* ——— LOADING ——— */
+  .loading-state {
+    display:flex; flex-direction:column;
+    align-items:center; gap:16px; padding:20px 0;
+    color:var(--text-muted);
+    font-family:var(--font-mono); font-size:0.75rem;
+    letter-spacing:0.08em; text-transform:uppercase;
+  }
+  .spinner {
+    width:24px; height:24px;
+    border:2px solid var(--surface-border);
+    border-top-color:var(--accent-warm);
+    border-radius:50%;
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="glow-orb"></div>
+
+<!-- Netlify form registration -->
+<form name="morning-launch" netlify netlify-honeypot="bot-field" hidden>
+  <input name="bot-field">
+  <input name="date">
+  <input name="state">
+  <input name="first-move">
+  <input name="launched">
+  <input name="rerouted-move">
+</form>
+
+<div class="card">
+  <div class="card-top-bar"></div>
+
+  <div class="card-header">
+    <div class="card-header-meta">
+      <span class="label">Morning Launch</span>
+      <div class="progress-dots">
+        <div class="dot active" id="dot-0"></div>
+        <div class="dot" id="dot-1"></div>
+        <div class="dot" id="dot-2"></div>
+      </div>
+    </div>
+    <h1 id="card-title">Good morning. Here's your <em>first move.</em></h1>
+  </div>
+
+  <div class="card-body">
+
+    <!-- Phase 0: Surface the first move -->
+    <div class="phase active" id="phase-0">
+      <div>
+        <div class="phase-eyebrow">Last night's decision</div>
+        <div class="phase-title" style="margin-top:6px">You already made <em>this choice.</em></div>
+      </div>
+      <div class="phase-sub">Yesterday You locked this in. Morning You just has to confirm it.</div>
+
+      <div id="first-move-display">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <span>Loading last night's session…</span>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="confirm-btn" onclick="goTo(1)" style="display:none">
+        This is still my first move →
+      </button>
+      <button class="btn-ghost" id="reroute-btn-0" onclick="goTo('reroute')" style="display:none">
+        The day has shifted — let me re-route
+      </button>
+    </div>
+
+    <!-- Phase 1: State check -->
+    <div class="phase" id="phase-1">
+      <div>
+        <div class="phase-eyebrow">State check</div>
+        <div class="phase-title" style="margin-top:6px">How are you <em>showing up</em> this morning?</div>
+      </div>
+      <div class="phase-sub">Be honest. This routes you to the right scaffold — not the one you think you should need.</div>
+
+      <div class="state-grid">
+        <button class="state-btn foggy" onclick="selectState('foggy', this)">
+          <div class="state-icon">🌫️</div>
+          <div class="state-label">Foggy</div>
+          <div class="state-desc">Hard to think. Low energy. Need a smaller entry point.</div>
+        </button>
+        <button class="state-btn functional" onclick="selectState('functional', this)">
+          <div class="state-icon">⚡</div>
+          <div class="state-label">Functional</div>
+          <div class="state-desc">Awake and ready. Can execute with a clear start.</div>
+        </button>
+        <button class="state-btn firedup" onclick="selectState('firedup', this)">
+          <div class="state-icon">🔥</div>
+          <div class="state-label">Fired up</div>
+          <div class="state-desc">High energy. Don't slow me down — just activate.</div>
+        </button>
+      </div>
+
+      <button class="btn-primary" id="state-confirm-btn" onclick="routeByState()" style="display:none">
+        Route me →
+      </button>
+      <button class="btn-ghost" onclick="goTo('reroute')">The day has shifted — let me re-route</button>
+    </div>
+
+    <!-- Phase 2a: FOGGY scaffold -->
+    <div class="phase" id="phase-foggy">
+      <div>
+        <div class="phase-eyebrow">Foggy → Help Me Start</div>
+        <div class="phase-title" style="margin-top:6px">Start <em>smaller</em> than feels necessary.</div>
+      </div>
+      <div class="phase-sub">The move is right. The barrier is activation energy. Here's the smallest possible entry point.</div>
+
+      <div class="scaffold-card">
+        <div class="scaffold-label">Your first move</div>
+        <div class="scaffold-text" id="foggy-move-text"></div>
+      </div>
+
+      <div>
+        <div class="phase-eyebrow" style="margin-bottom:12px">Break it down — just do step 1</div>
+        <div class="micro-steps" id="micro-steps">
+          <div class="micro-step highlight">
+            <span class="step-num">01</span>
+            Open the file, doc, or tool — nothing else.
+          </div>
+          <div class="micro-step">
+            <span class="step-num">02</span>
+            Read or review what exists. Don't create yet.
+          </div>
+          <div class="micro-step">
+            <span class="step-num">03</span>
+            Write one sentence, make one decision, or move one thing.
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="activate('foggy')">I can do step 1 — launch it</button>
+      <button class="btn-ghost" onclick="goTo('reroute')">This still feels too big — re-route</button>
+    </div>
+
+    <!-- Phase 2b: FUNCTIONAL scaffold -->
+    <div class="phase" id="phase-functional">
+      <div>
+        <div class="phase-eyebrow">Functional → Confirm & Launch</div>
+        <div class="phase-title" style="margin-top:6px">You're ready. <em>Start the clock.</em></div>
+      </div>
+      <div class="phase-sub">You have what you need. The decision is made. The only thing left is the first action.</div>
+
+      <div class="scaffold-card">
+        <div class="scaffold-label">Your first move</div>
+        <div class="scaffold-text" id="functional-move-text"></div>
+      </div>
+
+      <button class="btn-primary" onclick="activate('functional')">Confirmed — I'm starting now</button>
+      <button class="btn-ghost" onclick="goTo('reroute')">The day has shifted — re-route</button>
+    </div>
+
+    <!-- Phase 2c: FIRED UP scaffold -->
+    <div class="phase" id="phase-firedup">
+      <div>
+        <div class="phase-eyebrow">Fired up → Activate</div>
+        <div class="phase-title" style="margin-top:6px"><em>Go.</em></div>
+      </div>
+
+      <div class="scaffold-card" style="border-color:var(--green-border); background:var(--green-dim);">
+        <div class="scaffold-label" style="color:var(--green);">Your first move</div>
+        <div class="scaffold-text" id="firedup-move-text"></div>
+      </div>
+
+      <button class="btn-primary green" onclick="activate('firedup')">I'm already moving →</button>
+    </div>
+
+    <!-- Phase: Re-route -->
+    <div class="phase" id="phase-reroute">
+      <div>
+        <div class="phase-eyebrow">Re-route</div>
+        <div class="phase-title" style="margin-top:6px">The day has shifted. <em>What's the real first move?</em></div>
+      </div>
+      <div class="phase-sub">Something changed since last night. That's fine. Name the actual first move — one thing, not a list.</div>
+
+      <textarea id="reroute-input" placeholder="The real first move today is…" rows="3"></textarea>
+
+      <button class="btn-primary" onclick="confirmReroute()">Lock this in — route me →</button>
+    </div>
+
+    <!-- Phase: Activated -->
+    <div class="phase" id="phase-activated">
+      <div class="phase-eyebrow">Morning Launch — Active</div>
+      <div class="activated-frame" id="activated-frame">The work is ready. So are you.</div>
+
+      <div class="activated-move">
+        <div class="activated-move-label">First move locked</div>
+        <div class="activated-move-text" id="activated-move-display"></div>
+      </div>
+
+      <hr class="mini-divider">
+
+      <div class="submit-status" id="submit-status"></div>
+
+      <div style="font-family:var(--font-mono); font-size:0.6875rem; color:var(--text-muted); text-align:center; line-height:1.7;">
+        Session logged. Close this tab and<br>
+        <span style="color:var(--accent-warm);">start the move.</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card-footer">
+    <div class="footer-brand">
+      <div class="footer-dot"></div>
+      The ADHD O/S
+    </div>
+    <div class="footer-time" id="clock">—</div>
+  </div>
+</div>
+
+<script>
+  // ——— STATE ———
+  let currentPhase = 'phase-0';
+  let selectedState = null;
+  let firstMove = null;
+  let wasRerouted = false;
+
+  const titles = {
+    '0':          'Good morning. Here\'s your <em>first move.</em>',
+    '1':          'How are you <em>showing up</em> this morning?',
+    'foggy':      'Start <em>smaller</em> than feels necessary.',
+    'functional': 'You\'re ready. <em>Start the clock.</em>',
+    'firedup':    '<em>Go.</em>',
+    'reroute':    'The day has shifted. <em>New first move.</em>',
+    'activated':  'Morning Launch — <em>active.</em>'
+  };
+
+  const activatedFrames = {
+    foggy:      'One step. That\'s all. The rest will follow.',
+    functional: 'The decision is made. The clock is running.',
+    firedup:    'The work is ready. So are you.'
+  };
+
+  // ——— CLOCK ———
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours() % 12 || 12;
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const ap = now.getHours() >= 12 ? 'PM' : 'AM';
+    document.getElementById('clock').textContent = h + ':' + m + ' ' + ap;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  function dateString() {
+    const n = new Date();
+    return (n.getMonth()+1)+'/'+n.getDate()+'/'+n.getFullYear();
+  }
+
+  // ——— LOAD LAST NIGHT'S SESSION ———
+  async function loadLastSession() {
+    try {
+      // Fetch recent Netlify form submissions
+      const res = await fetch('/.netlify/functions/get-last-session');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.firstMove) {
+          firstMove = data.firstMove;
+          renderFirstMove(firstMove, data.date);
+          return;
+        }
+      }
+    } catch(e) {}
+    // Fallback: show manual entry
+    renderManualEntry();
+  }
+
+  function renderFirstMove(move, date) {
+    const display = document.getElementById('first-move-display');
+    display.innerHTML = `
+      <div class="first-move-card">
+        <div class="first-move-label">Committed last night</div>
+        <div class="first-move-text">${esc(move)}</div>
+        <div class="first-move-meta">Logged ${date || 'last night'} · Night Shift Closer</div>
+      </div>
+    `;
+    document.getElementById('confirm-btn').style.display = 'block';
+    document.getElementById('reroute-btn-0').style.display = 'block';
+  }
+
+  function renderManualEntry() {
+    const display = document.getElementById('first-move-display');
+    display.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="phase-sub">No session found from last night. What's the first move today?</div>
+        <textarea id="manual-move-input" placeholder="The first move today is…" rows="2" style="min-height:70px;"></textarea>
+      </div>
+    `;
+    document.getElementById('confirm-btn').textContent = 'Set this as my first move →';
+    document.getElementById('confirm-btn').onclick = () => {
+      const val = document.getElementById('manual-move-input')?.value?.trim();
+      if (val) {
+        firstMove = val;
+        goTo(1);
+      }
+    };
+    document.getElementById('confirm-btn').style.display = 'block';
+    document.getElementById('reroute-btn-0').style.display = 'none';
+  }
+
+  // ——— NAVIGATION ———
+  function goTo(n) {
+    const prevEl = document.getElementById(currentPhase);
+    if (prevEl) prevEl.classList.remove('active');
+
+    const key = String(n);
+    const nextId = isNaN(n) ? 'phase-' + n : 'phase-' + n;
+    currentPhase = nextId;
+
+    const nextEl = document.getElementById(nextId);
+    if (nextEl) nextEl.classList.add('active');
+
+    // Update dots
+    const dotMap = { 'phase-0': 0, 'phase-1': 1 };
+    for (let i = 0; i <= 2; i++) {
+      const d = document.getElementById('dot-' + i);
+      if (!d) continue;
+      d.classList.remove('active', 'done');
+      const phaseNum = dotMap[nextId];
+      if (phaseNum !== undefined) {
+        if (i < phaseNum) d.classList.add('done');
+        else if (i === phaseNum) d.classList.add('active');
+      } else {
+        if (i < 2) d.classList.add('done');
+        else d.classList.add('active');
+      }
+    }
+
+    const titleKey = isNaN(n) ? String(n) : String(n);
+    if (titles[titleKey]) {
+      document.getElementById('card-title').innerHTML = titles[titleKey];
+    }
+
+    // Populate move text in scaffold phases
+    if (firstMove) {
+      const ids = ['foggy-move-text','functional-move-text','firedup-move-text'];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = firstMove;
+      });
+    }
+  }
+
+  // ——— STATE SELECTION ———
+  function selectState(state, btn) {
+    document.querySelectorAll('.state-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedState = state;
+    document.getElementById('state-confirm-btn').style.display = 'block';
+  }
+
+  function routeByState() {
+    if (!selectedState) return;
+    goTo(selectedState);
+  }
+
+  // ——— RE-ROUTE ———
+  function confirmReroute() {
+    const val = document.getElementById('reroute-input').value.trim();
+    if (!val) return;
+    firstMove = val;
+    wasRerouted = true;
+    // Go to state check with new move
+    const ids = ['foggy-move-text','functional-move-text','firedup-move-text'];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = firstMove;
+    });
+    goTo(1);
+  }
+
+  // ——— ACTIVATE ———
+  function activate(state) {
+    const frame = activatedFrames[state] || activatedFrames.functional;
+    document.getElementById('activated-frame').textContent = frame;
+    document.getElementById('activated-move-display').textContent = firstMove;
+    goTo('activated');
+    submitToNetlify(state);
+  }
+
+  // ——— NETLIFY SUBMIT ———
+  async function submitToNetlify(state) {
+    const status = document.getElementById('submit-status');
+
+    const body = new URLSearchParams({
+      'form-name':     'morning-launch',
+      'date':          dateString(),
+      'state':         state || 'unknown',
+      'first-move':    firstMove || '',
+      'launched':      'true',
+      'rerouted-move': wasRerouted ? 'yes' : 'no',
+    });
+
+    try {
+      const res = await fetch(window.location.pathname, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      });
+      if (res.ok) {
+        status.textContent = '✓ Session logged to Netlify.';
+        status.className = 'submit-status ok';
+        status.style.display = 'block';
+      } else {
+        throw new Error('Non-OK');
+      }
+    } catch(e) {
+      status.textContent = 'Logging failed — check connection.';
+      status.className = 'submit-status err';
+      status.style.display = 'block';
+    }
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  // ——— INIT ———
+  loadLastSession();
+</script>
+</body>
+</html>

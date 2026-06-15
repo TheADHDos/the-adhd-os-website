@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The ADHD O/S — A Real-World Execution System for Diagnosed Adults</title>
+<meta name="description" content="You know what to do. The system just doesn't survive real life. The ADHD O/S is a non-clinical execution layer for diagnosed adults managing work, household, and family complexity.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+  /* ——— DESIGN TOKENS ——— */
+  :root {
+    --bg-primary:           #07090E;
+    --bg-secondary:         #0D1117;
+    --bg-card:              #0F1419;
+    --bg-card-hover:        #141C25;
+    --surface-border:       #1C2636;
+    --surface-border-hover: #2A3A50;
+    --text-primary:         #E8ECF1;
+    --text-secondary:       #8492A6;
+    --text-muted:           #4A5568;
+
+    --accent:               #A78BFA;
+    --accent-dim:           rgba(167,139,250,0.10);
+    --accent-glow:          rgba(167,139,250,0.06);
+    --accent-border:        rgba(167,139,250,0.18);
+    --accent-warm:          #FB923C;
+    --accent-warm-dim:      rgba(251,146,60,0.10);
+    --accent-warm-border:   rgba(251,146,60,0.18);
+    --accent-lime:          #BFFF0A;
+    --accent-cyan:          #22D3EE;
+
+    --font-mono:  'JetBrains Mono', monospace;
+    --font-serif: 'Instrument Serif', serif;
+    --font-sans:  'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior: smooth; font-size: 16px; }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ——— NOISE OVERLAY ——— */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999; opacity: 0.5;
+  }
+
+  /* ——— GRID BG ——— */
+  .grid-bg {
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ——— SCROLL PROGRESS ——— */
+  .scroll-progress {
+    position: fixed; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-warm));
+    transform-origin: left;
+    transform: scaleX(0);
+    z-index: 200;
+    transition: transform 0.1s linear;
+  }
+
+  /* ——— UTILITY ——— */
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 40px; position: relative; z-index: 1; }
+
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    padding: 4px 12px; border-radius: 4px; display: inline-block;
+  }
+  .label-warm {
+    color: var(--accent-warm); background: var(--accent-warm-dim);
+    border-color: var(--accent-warm-border);
+  }
+  .label-muted {
+    color: var(--text-muted); background: rgba(74,85,104,0.12);
+    border-color: rgba(74,85,104,0.20);
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  .section-divider { border: none; border-top: 1px solid var(--surface-border); margin: 0; }
+
+  /* ——— ANIMATIONS ——— */
+  @keyframes fadeUp  { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+  @keyframes pulse-glow { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+  .anim-up { animation: fadeUp  0.75s ease-out forwards; opacity: 0; }
+  .anim-in { animation: fadeIn  0.60s ease-out forwards; opacity: 0; }
+  .d1{animation-delay:.10s} .d2{animation-delay:.20s} .d3{animation-delay:.30s}
+  .d4{animation-delay:.40s} .d5{animation-delay:.50s} .d6{animation-delay:.60s}
+  .d7{animation-delay:.70s} .d8{animation-delay:.80s}
+
+  /* ——— NAV ——— */
+  nav {
+    position: fixed; top:0; left:0; right:0; z-index:100;
+    padding: 14px 40px;
+    background: rgba(7,9,14,0.88); backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--surface-border);
+    animation: fadeIn 0.5s ease-out;
+  }
+  .nav-inner { max-width:1080px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+  .logo { display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--text-primary); }
+  .logo-mark {
+    width:32px; height:32px; border-radius:8px;
+    background:linear-gradient(135deg,#A78BFA,#7C3AED);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:.75rem; font-weight:700;
+    color:#fff; letter-spacing:-0.04em; flex-shrink:0;
+  }
+  .logo-text { font-family:var(--font-mono); font-size:.9rem; font-weight:600; letter-spacing:-0.02em; color:var(--text-primary); }
+  .logo-text em { font-style:normal; color:var(--accent); }
+  .nav-links { display:flex; align-items:center; gap:28px; list-style:none; }
+  .nav-links a { color:var(--text-secondary); text-decoration:none; font-size:.875rem; font-weight:400; transition:color .2s; }
+  .nav-links a:hover { color:var(--text-primary); }
+  .nav-cta {
+    background:var(--accent)!important; color:var(--bg-primary)!important;
+    font-weight:600!important; padding:8px 18px; border-radius:6px;
+    font-size:.8125rem!important; transition:all .2s; white-space:nowrap;
+  }
+  .nav-cta:hover { opacity:.9; transform:translateY(-1px); }
+
+  /* ——— HERO ——— */
+  .hero { padding:172px 0 96px; position:relative; overflow:hidden; }
+  .hero-glow {
+    position:absolute; width:900px; height:700px;
+    top:0; left:50%; transform:translateX(-55%);
+    background:radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .hero-content { position:relative; max-width:800px; }
+  .hero-eyebrow { margin-bottom:24px; display:flex; align-items:center; gap:12px; }
+  .hero-eyebrow-tag {
+    font-family:var(--font-mono); font-size:.6875rem; font-weight:500;
+    letter-spacing:.10em; text-transform:uppercase; color:var(--text-muted);
+  }
+  .hero-eyebrow-sep { color:var(--surface-border-hover); font-family:var(--font-mono); }
+  .hero h1 {
+    font-family:var(--font-serif); font-size:4rem; font-weight:400;
+    line-height:1.07; letter-spacing:-0.03em; margin-bottom:32px;
+  }
+  .hero h1 em { font-style:italic; color:var(--accent); }
+  .hero-sub {
+    font-size:1.0625rem; color:var(--text-secondary); line-height:1.8;
+    max-width:640px; font-weight:300; margin-bottom:16px;
+  }
+  .hero-sub strong { color:var(--text-primary); font-weight:500; }
+  .hero-bridge {
+    font-size:.9375rem; color:var(--text-muted); line-height:1.7;
+    max-width:600px; font-weight:300; margin-bottom:40px;
+    font-family:var(--font-mono); letter-spacing:.01em;
+  }
+  .hero-bridge em { color:var(--text-secondary); font-style:normal; }
+
+  .hero-ctas { display:flex; gap:20px; align-items:flex-end; flex-wrap:wrap; margin-bottom:36px; }
+  .hero-primary-cta { display:flex; flex-direction:column; align-items:flex-start; gap:0; }
+
+  .btn-primary {
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--accent); color:var(--bg-primary);
+    font-family:var(--font-sans); font-size:.9375rem; font-weight:600;
+    padding:14px 28px; border-radius:8px; text-decoration:none;
+    transition:all .2s; border:none; cursor:pointer;
+  }
+  .btn-primary:hover { opacity:.92; transform:translateY(-2px); box-shadow:0 8px 32px rgba(167,139,250,.25); }
+
+  .btn-ghost {
+    display:inline-flex; align-items:center; gap:8px;
+    background:transparent; color:var(--text-secondary);
+    font-family:var(--font-sans); font-size:.875rem; font-weight:400;
+    padding:14px 24px; border-radius:8px; text-decoration:none;
+    border:1px solid var(--surface-border); transition:all .2s; cursor:pointer;
+  }
+  .btn-ghost:hover { color:var(--text-primary); border-color:var(--surface-border-hover); }
+
+  .btn-micro {
+    font-family:var(--font-mono); font-size:.6875rem; color:var(--text-muted);
+    margin-top:10px; letter-spacing:.04em; padding-left:2px;
+  }
+
+  .trust-strip {
+    display:flex; gap:24px; flex-wrap:wrap;
+    padding-top:32px; border-top:1px solid var(--surface-border);
+  }
+  .trust-item {
+    display:flex; align-items:center; gap:8px;
+    font-family:var(--font-mono); font-size:.6875rem;
+    color:var(--text-muted); letter-spacing:.06em; text-transform:uppercase;
+  }
+  .trust-dot { width:5px; height:5px; border-radius:50%; background:var(--accent); animation:pulse-glow 3s ease-in-out infinite; }
+  .trust-dot.warm  { background:var(--accent-warm); animation-delay:1s; }
+  .trust-dot.muted { background:var(--text-muted); animation:none; }
+
+  /* ——— STAT STRIP ——— */
+  .stat-strip {
+    display:grid; grid-template-columns:repeat(3,1fr);
+    gap:2px; border:1px solid var(--surface-border);
+    border-radius:12px; overflow:hidden;
+  }
+  .stat-col {
+    background:var(--bg-card); padding:32px 32px;
+    position:relative;
+  }
+  .stat-col:not(:last-child) { border-right:1px solid var(--surface-border); }
+  .stat-num {
+    font-family:var(--font-serif); font-size:2.75rem; font-weight:400;
+    color:var(--text-primary); line-height:1; letter-spacing:-0.03em;
+    margin-bottom:8px;
+  }
+  .stat-num em { font-style:italic; color:var(--accent); }
+  .stat-num em.warm { color:var(--accent-warm); }
+  .stat-label {
+    font-size:.9375rem; color:var(--text-secondary); line-height:1.6; font-weight:300;
+    margin-bottom:8px;
+  }
+  .stat-source {
+    font-family:var(--font-mono); font-size:.5625rem; color:var(--text-muted);
+    letter-spacing:.08em; text-transform:uppercase;
+  }
+
+  /* ——— SECTION HEADERS ——— */
+  .section-header { margin-bottom:56px; }
+  .section-header .label { margin-bottom:16px; }
+  .section-header h2 {
+    font-family:var(--font-serif); font-size:2.5rem; font-weight:400;
+    line-height:1.15; letter-spacing:-0.025em; margin-bottom:16px;
+  }
+  .section-header h2 em { font-style:italic; color:var(--accent); }
+  .section-header h2 em.warm { color:var(--accent-warm); }
+  .section-header p { font-size:1.0625rem; color:var(--text-secondary); line-height:1.75; max-width:560px; font-weight:300; }
+
+  /* ——— PROBLEM GRID ——— */
+  .problem-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .problem-card {
+    background:var(--bg-card); border:1px solid var(--surface-border);
+    border-radius:12px; padding:28px 32px;
+    transition:border-color .2s, background .2s;
+  }
+  .problem-card:hover { border-color:var(--accent-border); background:var(--bg-card-hover); }
+  .problem-card-quote {
+    font-family:var(--font-serif); font-size:1.125rem; font-style:italic;
+    color:var(--text-primary); line-height:1.6; margin-bottom:12px;
+  }
+  .problem-card-mode {
+    font-family:var(--font-mono); font-size:.6875rem;
+    letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted);
+  }
+  .problem-bridge {
+    margin-top:24px; padding:28px 32px;
+    background:var(--accent-dim); border:1px solid var(--accent-border); border-radius:12px;
+  }
+  .problem-bridge p { font-size:1rem; line-height:1.75; color:var(--text-secondary); }
+  .problem-bridge strong { color:var(--text-primary); font-weight:500; }
+
+  /* ——— ARCH GRID ——— */
+  .arch-grid {
+    display:grid; grid-template-columns:repeat(3,1fr);
+    gap:2px; margin-top:48px; border-radius:12px;
+    overflow:hidden; border:1px solid var(--surface-border);
+  }
+  .arch-col { background:var(--bg-card); padding:36px 28px; position:relative; }
+  .arch-col:not(:last-child) { border-right:1px solid var(--surface-border); }
+  .arch-num {
+    font-family:var(--font-mono); font-size:.6875rem; font-weight:500;
+    letter-spacing:.12em; color:var(--text-muted); text-transform:uppercase; margin-bottom:16px;
+  }
+  .arch-col h3 {
+    font-family:var(--font-serif); font-size:1.25rem; font-weight:400;
+    color:var(--text-primary); margin-bottom:12px; line-height:1.3;
+  }
+  .arch-col p { font-size:.9375rem; color:var(--text-secondary); line-height:1.7; font-weight:300; }
+  .arch-accent-bar {
+    position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg, var(--accent), transparent);
+  }
+  .arch-accent-bar.warm { background:linear-gradient(90deg, var(--accent-warm), transparent); }
+
+  /* ——— REENTRY CALLOUT ——— */
+  .reentry-callout {
+    margin-top:20px; padding:24px 32px;
+    background:var(--bg-card); border:1px solid var(--surface-border);
+    border-left:3px solid var(--accent-warm);
+    border-radius:0 12px 12px 0;
+    display:flex; align-items:flex-start; gap:20px;
+  }
+  .reentry-callout.violet { border-left-color:var(--accent); }
+  .reentry-icon { font-size:1.25rem; flex-shrink:0; margin-top:2px; }
+  .reentry-callout p { font-size:.9375rem; color:var(--text-secondary); line-height:1.65; }
+  .reentry-callout strong { color:var(--text-primary); font-weight:500; }
+
+  /* ——— BRIDGE SECTION ——— */
+  .bridge-card {
+    background:var(--bg-card); border:1px solid var(--surface-border);
+    border-radius:16px; overflow:hidden; position:relative;
+  }
+  .bridge-card-glow {
+    position:absolute; width:500px; height:400px;
+    top:-120px; right:-80px;
+    background:radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .bridge-card-inner {
+    display:grid; grid-template-columns:1fr 1fr; gap:0; position:relative; z-index:1;
+  }
+  .bridge-left { padding:52px 48px; border-right:1px solid var(--surface-border); }
+  .bridge-left .label { margin-bottom:20px; }
+  .bridge-left h2 {
+    font-family:var(--font-serif); font-size:2rem; font-weight:400;
+    line-height:1.2; letter-spacing:-0.025em; margin-bottom:20px;
+  }
+  .bridge-left h2 em { font-style:italic; color:var(--accent); }
+  .bridge-left p {
+    font-size:.9375rem; color:var(--text-secondary);
+    line-height:1.75; font-weight:300; margin-bottom:16px;
+  }
+  .bridge-left p strong { color:var(--text-primary); font-weight:500; }
+  .bridge-disclaimer {
+    margin-top:24px; padding:16px 20px;
+    background:var(--bg-secondary); border:1px solid var(--surface-border);
+    border-radius:8px; border-left:3px solid var(--text-muted);
+  }
+  .bridge-disclaimer p {
+    font-family:var(--font-mono); font-size:.6875rem;
+    color:var(--text-muted); line-height:1.6; letter-spacing:.02em;
+    margin-bottom:0;
+  }
+  .bridge-right { padding:52px 48px; background:var(--bg-secondary); }
+  .bridge-right h3 {
+    font-family:var(--font-mono); font-size:.6875rem;
+    letter-spacing:.12em; text-transform:uppercase;
+    color:var(--text-muted); margin-bottom:24px;
+  }
+  .bridge-layers { list-style:none; display:flex; flex-direction:column; gap:0; }
+  .bridge-layer {
+    display:flex; align-items:flex-start; gap:16px;
+    padding:16px 0; border-bottom:1px solid var(--surface-border);
+  }
+  .bridge-layer:last-child { border-bottom:none; padding-bottom:0; }
+  .bridge-layer-icon {
+    width:32px; height:32px; border-radius:8px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px; margin-top:2px;
+  }
+  .bridge-layer-icon.clinical { background:rgba(74,85,104,.15); border:1px solid rgba(74,85,104,.25); }
+  .bridge-layer-icon.gap      { background:var(--accent-warm-dim); border:1px solid var(--accent-warm-border); }
+  .bridge-layer-icon.os       { background:var(--accent-dim); border:1px solid var(--accent-border); }
+  .bridge-layer-text { flex:1; }
+  .bridge-layer-name {
+    font-family:var(--font-mono); font-size:.8125rem; font-weight:600;
+    color:var(--text-primary); margin-bottom:3px; letter-spacing:-.01em;
+  }
+  .bridge-layer-desc { font-size:.875rem; color:var(--text-muted); line-height:1.5; }
+
+  /* ——— SYSTEM OVERVIEW ——— */
+  .system-grid {
+    display:grid; grid-template-columns:repeat(3,1fr);
+    gap:16px; margin-top:48px;
+  }
+  .system-card {
+    background:var(--bg-card); border:1px solid var(--surface-border);
+    border-radius:12px; padding:28px 28px;
+    transition:border-color .2s, background .2s;
+    text-decoration:none; display:block;
+  }
+  .system-card:hover { border-color:var(--accent-border); background:var(--bg-card-hover); }
+  .system-card-eyebrow {
+    display:flex; align-items:center; gap:10px; margin-bottom:14px;
+  }
+  .system-card-icon {
+    width:32px; height:32px; border-radius:8px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:14px;
+    background:var(--accent-dim); border:1px solid var(--accent-border);
+  }
+  .system-card-layer {
+    font-family:var(--font-mono); font-size:.5625rem; font-weight:700;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--text-muted);
+  }
+  .system-card h3 {
+    font-family:var(--font-serif); font-size:1.125rem; font-weight:400;
+    color:var(--text-primary); margin-bottom:8px; line-height:1.3;
+  }
+  .system-card p { font-size:.875rem; color:var(--text-secondary); line-height:1.65; font-weight:300; }
+  .system-card-link {
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:var(--font-mono); font-size:.625rem; font-weight:600;
+    letter-spacing:.10em; text-transform:uppercase;
+    color:var(--accent); margin-top:14px;
+    opacity:0; transition:opacity .2s;
+  }
+  .system-card:hover .system-card-link { opacity:1; }
+
+  /* ——— COHORT CARD ——— */
+  .cohort-card {
+    background:var(--bg-card); border:1px solid var(--surface-border);
+    border-radius:16px; padding:56px 64px; position:relative; overflow:hidden;
+  }
+  .cohort-card-glow {
+    position:absolute; width:400px; height:300px;
+    bottom:-100px; right:-60px;
+    background:radial-gradient(ellipse, var(--accent-warm-dim) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .cohort-inner {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:64px; align-items:start; position:relative; z-index:1;
+  }
+  .cohort-left .label { margin-bottom:20px; }
+  .cohort-left h2 {
+    font-family:var(--font-serif); font-size:2.25rem; font-weight:400;
+    line-height:1.15; letter-spacing:-0.025em; margin-bottom:16px;
+  }
+  .cohort-left h2 em { font-style:italic; color:var(--accent-warm); }
+  .cohort-left p {
+    font-size:.9375rem; color:var(--text-secondary);
+    line-height:1.7; font-weight:300; margin-bottom:24px;
+  }
+  .cohort-includes { list-style:none; display:flex; flex-direction:column; gap:10px; margin-bottom:32px; }
+  .cohort-includes li {
+    display:flex; align-items:flex-start; gap:10px;
+    font-size:.9rem; color:var(--text-secondary);
+  }
+  .cohort-includes li::before {
+    content:'→'; color:var(--accent-warm);
+    font-family:var(--font-mono); font-size:.8125rem;
+    flex-shrink:0; margin-top:1px;
+  }
+  .cohort-right { display:flex; flex-direction:column; gap:20px; }
+  .cohort-block {
+    background:var(--bg-secondary); border:1px solid var(--surface-border);
+    border-radius:12px; padding:28px;
+  }
+  .cohort-block-label {
+    font-family:var(--font-mono); font-size:.6875rem; color:var(--text-muted);
+    letter-spacing:.10em; text-transform:uppercase; margin-bottom:12px;
+  }
+  .cohort-block-value {
+    font-family:var(--font-serif); font-size:1.5rem; color:var(--text-primary);
+    margin-bottom:6px; letter-spacing:-0.02em;
+  }
+  .cohort-block-sub { font-size:.875rem; color:var(--text-muted); line-height:1.6; }
+  .cohort-cta-area {
+    background:var(--accent-dim); border:1px solid var(--accent-border);
+    border-radius:12px; padding:28px;
+  }
+  .cohort-cta-area p {
+    font-size:.875rem; color:var(--text-secondary); margin-bottom:16px; line-height:1.6;
+  }
+  .waitlist-input-row { display:flex; gap:8px; }
+  .waitlist-input {
+    flex:1; background:var(--bg-primary); border:1px solid var(--surface-border);
+    border-radius:8px; padding:12px 16px; color:var(--text-primary);
+    font-family:var(--font-sans); font-size:.875rem; outline:none;
+    transition:border-color .2s;
+  }
+  .waitlist-input:focus { border-color:var(--accent-border); }
+  .waitlist-input::placeholder { color:var(--text-muted); }
+  .waitlist-btn {
+    background:var(--accent-warm); color:var(--bg-primary);
+    font-family:var(--font-sans); font-size:.8125rem; font-weight:600;
+    padding:12px 20px; border-radius:8px; border:none; cursor:pointer;
+    transition:opacity .2s; white-space:nowrap;
+  }
+  .waitlist-btn:hover { opacity:.9; }
+  .waitlist-micro {
+    font-family:var(--font-mono); font-size:.625rem;
+    color:var(--text-muted); margin-top:10px; letter-spacing:.05em;
+  }
+
+  /* ——— SCIENCE / CREDENTIALS ——— */
+  .science-grid {
+    display:grid; grid-template-columns:repeat(3,1fr);
+    gap:16px; margin-top:48px; margin-bottom:24px;
+  }
+  .science-card {
+    background:var(--bg-card); border:1px solid var(--surface-border);
+    border-radius:12px; padding:28px; transition:border-color .2s;
+  }
+  .science-card:hover { border-color:var(--accent-border); }
+  .science-card-num {
+    font-family:var(--font-mono); font-size:.6875rem; color:var(--accent);
+    letter-spacing:.10em; text-transform:uppercase; margin-bottom:12px;
+  }
+  .science-card p { font-size:.9375rem; color:var(--text-secondary); line-height:1.7; font-weight:300; }
+  .science-card p strong { color:var(--text-primary); font-weight:500; }
+  .disclaimer-block {
+    padding:28px 32px; background:var(--bg-secondary);
+    border:1px solid var(--surface-border); border-radius:12px;
+    border-left:3px solid var(--text-muted);
+  }
+  .disclaimer-block p { font-size:.875rem; color:var(--text-muted); line-height:1.75; }
+  .disclaimer-block strong { color:var(--text-secondary); font-weight:500; }
+
+  /* ——— FOUNDER ——— */
+  .founder-card {
+    display:grid; grid-template-columns:1fr 1fr; gap:0;
+    background:var(--bg-card); border:1px solid var(--surface-border);
+    border-radius:16px; overflow:hidden;
+  }
+  .founder-left { padding:52px 48px; border-right:1px solid var(--surface-border); }
+  .founder-left .label { margin-bottom:20px; }
+  .founder-left h2 {
+    font-family:var(--font-serif); font-size:1.875rem; font-weight:400;
+    line-height:1.2; letter-spacing:-0.025em; margin-bottom:24px;
+  }
+  .founder-left h2 em { font-style:italic; color:var(--accent); }
+  .founder-left p {
+    font-size:.9375rem; color:var(--text-secondary);
+    line-height:1.75; font-weight:300; margin-bottom:16px;
+  }
+  .founder-left p strong { color:var(--text-primary); font-weight:500; }
+  .founder-right { padding:52px 48px; background:var(--bg-secondary); }
+  .founder-right h3 {
+    font-family:var(--font-mono); font-size:.6875rem;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--text-muted); margin-bottom:20px;
+  }
+  .values-list { list-style:none; display:flex; flex-direction:column; gap:14px; }
+  .values-list li { display:flex; flex-direction:column; gap:2px; }
+  .value-title {
+    font-family:var(--font-mono); font-size:.8125rem; font-weight:600;
+    color:var(--text-primary); letter-spacing:-.01em;
+  }
+  .value-sub { font-size:.875rem; color:var(--text-muted); }
+
+  /* ——— FAQ ——— */
+  .faq-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:48px; }
+  .faq-item {
+    background:var(--bg-card); border:1px solid var(--surface-border);
+    border-radius:12px; padding:28px; transition:border-color .2s;
+  }
+  .faq-item:hover { border-color:var(--accent-border); }
+  .faq-q { font-size:.9375rem; font-weight:600; color:var(--text-primary); margin-bottom:10px; line-height:1.4; }
+  .faq-a { font-size:.9rem; color:var(--text-secondary); line-height:1.7; font-weight:300; }
+  .faq-a strong { color:var(--text-primary); font-weight:500; }
+
+  /* ——— FINAL CTA ——— */
+  .final-cta { padding:96px 0; position:relative; }
+  .final-cta-glow {
+    position:absolute; width:600px; height:400px;
+    top:50%; left:50%; transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .final-cta-card {
+    background:var(--bg-card); border:1px solid var(--surface-border);
+    border-radius:16px; padding:72px 80px; text-align:center;
+    position:relative; z-index:1; overflow:hidden;
+  }
+  .final-cta-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .final-cta-card .label { margin-bottom:20px; }
+  .final-cta-card h2 {
+    font-family:var(--font-serif); font-size:2.75rem; font-weight:400;
+    line-height:1.1; letter-spacing:-0.03em; margin-bottom:16px;
+  }
+  .final-cta-card h2 em { font-style:italic; color:var(--accent); }
+  .final-cta-card > p {
+    font-size:1rem; color:var(--text-secondary); margin-bottom:40px;
+    max-width:480px; margin-left:auto; margin-right:auto;
+    line-height:1.7; font-weight:300;
+  }
+  .final-cta-btns { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; }
+  .btn-secondary {
+    display:inline-flex; align-items:center; gap:8px;
+    background:transparent; color:var(--text-primary);
+    font-family:var(--font-sans); font-size:.875rem; font-weight:500;
+    padding:12px 22px; border-radius:8px; text-decoration:none;
+    border:1px solid var(--surface-border-hover); transition:all .2s; cursor:pointer;
+  }
+  .btn-secondary:hover { border-color:var(--accent-border); color:var(--accent); }
+
+  /* ——— FOOTER ——— */
+  footer { padding:48px 0 32px; border-top:1px solid var(--surface-border); }
+  .footer-inner {
+    display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr;
+    gap:48px; margin-bottom:40px;
+  }
+  .footer-brand p { font-size:.875rem; color:var(--text-muted); line-height:1.65; margin-top:12px; max-width:260px; }
+  .footer-col h4 {
+    font-family:var(--font-mono); font-size:.6875rem; font-weight:600;
+    letter-spacing:.10em; text-transform:uppercase; color:var(--text-muted); margin-bottom:16px;
+  }
+  .footer-col ul { list-style:none; display:flex; flex-direction:column; gap:10px; }
+  .footer-col ul li a { color:var(--text-secondary); font-size:.875rem; text-decoration:none; transition:color .2s; }
+  .footer-col ul li a:hover { color:var(--text-primary); }
+  .footer-bottom {
+    padding-top:24px; border-top:1px solid var(--surface-border);
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+  }
+  .footer-bottom span { font-family:var(--font-mono); font-size:.6875rem; color:var(--text-muted); letter-spacing:.04em; }
+  .footer-disclaimer { font-size:.75rem; color:var(--text-muted); max-width:500px; text-align:right; line-height:1.6; }
+
+  /* ——— RESPONSIVE ——— */
+  @media (max-width: 900px) {
+    .hero h1 { font-size:3rem; }
+    .stat-strip, .arch-grid, .system-grid { grid-template-columns:1fr; }
+    .stat-col:not(:last-child), .arch-col:not(:last-child) { border-right:none; border-bottom:1px solid var(--surface-border); }
+    .system-grid { grid-template-columns:1fr 1fr; }
+    .bridge-card-inner, .cohort-inner, .founder-card { grid-template-columns:1fr; }
+    .bridge-left, .founder-left { border-right:none; border-bottom:1px solid var(--surface-border); }
+    .cohort-inner { gap:40px; }
+    .cohort-card { padding:40px 32px; }
+    .science-grid { grid-template-columns:1fr 1fr; }
+    .faq-grid { grid-template-columns:1fr; }
+    .footer-inner { grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .container { padding:0 20px; }
+    nav { padding:12px 20px; }
+    .hero { padding:140px 0 72px; }
+    .hero h1 { font-size:2.375rem; }
+    .problem-grid, .system-grid { grid-template-columns:1fr; }
+    .science-grid { grid-template-columns:1fr; }
+    .hero-ctas { flex-direction:column; align-items:flex-start; }
+    .final-cta-card { padding:48px 32px; }
+    .final-cta-card h2 { font-size:2rem; }
+    .footer-inner { grid-template-columns:1fr; gap:32px; }
+    .footer-bottom { flex-direction:column; gap:12px; align-items:flex-start; }
+    .footer-disclaimer { text-align:left; }
+    .waitlist-input-row { flex-direction:column; }
+    .nav-links { gap:16px; }
+    .nav-links li:not(:last-child):not(:nth-last-child(2)) { display:none; }
+    .bridge-left, .bridge-right, .founder-left, .founder-right { padding:36px 28px; }
+    .cohort-card { padding:32px 24px; }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="scroll-progress" id="scrollBar"></div>
+<div class="grid-bg"></div>
+
+<!-- ——— NAV ——— -->
+<nav>
+  <div class="nav-inner">
+    <a class="logo" href="#">
+      <div class="logo-mark">A/O</div>
+      <span class="logo-text">The ADHD <em>O/S</em></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#problem">The Problem</a></li>
+      <li><a href="#system">The System</a></li>
+      <li><a href="#cohort">May 2026</a></li>
+      <li><a href="#science">Science &amp; Safety</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a class="nav-cta" href="#cohort">Join the Waitlist →</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════
+     HERO
+     ═══════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="hero-content">
+
+      <div class="hero-eyebrow anim-up d1">
+        <span class="label">Pre-Launch · May 2026 Cohort</span>
+        <span class="hero-eyebrow-sep">·</span>
+        <span class="hero-eyebrow-tag">For Diagnosed Adults Managing Work + Household Complexity</span>
+      </div>
+
+      <h1 class="anim-up d2">
+        You know what to do.<br>
+        The system just doesn't<br>
+        <em>survive real life.</em>
+      </h1>
+
+      <p class="hero-sub anim-up d3">
+        You've had systems. Some of them worked — until your life got bigger. More people depending on you. More responsibilities running in parallel. More moments where <strong>the coping mechanisms you built before your diagnosis stopped holding the weight.</strong>
+      </p>
+
+      <p class="hero-bridge anim-up d4">
+        <em>The ADHD O/S is not another tool.</em> It is a real-world execution layer — built from the science of ADHD, deployed in the Apple ecosystem you already use — designed to hold up at the exact moment everything else breaks down.
+      </p>
+
+      <div class="hero-ctas anim-up d5">
+        <div class="hero-primary-cta">
+          <a class="btn-primary" href="#cohort">Join the May 2026 Cohort →</a>
+          <div class="btn-micro">Limited seats · Non-clinical · Built for real life</div>
+        </div>
+        <a class="btn-ghost" href="#system">See how it works</a>
+      </div>
+
+      <div class="trust-strip anim-in d6">
+        <div class="trust-item"><span class="trust-dot"></span>Evidence-governed</div>
+        <div class="trust-item"><span class="trust-dot warm"></span>Non-clinical</div>
+        <div class="trust-item"><span class="trust-dot muted"></span>Re-entry-first design</div>
+        <div class="trust-item"><span class="trust-dot muted"></span>No willpower required</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     MARKET STATS
+     ═══════════════════════════════════════ -->
+<hr class="section-divider">
+<section style="padding:64px 0">
+  <div class="container">
+    <div class="stat-strip anim-up d2">
+      <div class="stat-col">
+        <div class="stat-num"><em>15.5M</em></div>
+        <div class="stat-label">U.S. adults currently diagnosed with ADHD — and managing daily life without a system built for how their brain actually works.</div>
+        <div class="stat-source">CDC · 2023 · Current diagnosis estimate</div>
+      </div>
+      <div class="stat-col">
+        <div class="stat-num"><em class="warm">55.9%</em></div>
+        <div class="stat-label">Were diagnosed as adults — meaning years of building ad hoc coping mechanisms before understanding why the systems kept failing.</div>
+        <div class="stat-source">CDC · 2023 · Adult-onset diagnosis rate</div>
+      </div>
+      <div class="stat-col">
+        <div class="stat-num"><em>36.5%</em></div>
+        <div class="stat-label">Received neither behavioral treatment nor medication in the prior year — managing alone, without even the incomplete support clinical care provides.</div>
+        <div class="stat-source">CDC · 2023 · Treatment gap estimate</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     THE PROBLEM
+     ═══════════════════════════════════════ -->
+<hr class="section-divider">
+<section style="padding:96px 0" id="problem">
+  <div class="container">
+    <div class="section-header anim-up">
+      <span class="label">The Problem</span>
+      <h2>Your old systems didn't fail. <em>Your life outgrew them.</em></h2>
+      <p>High-functioning adults with ADHD spend years building compensations — and most of them work, for a while. Then the life they were built for changes, and the scaffolding doesn't scale.</p>
+    </div>
+
+    <div class="problem-grid">
+      <div class="problem-card anim-up d2">
+        <div class="problem-card-quote">"I had a system that worked. Then we had kids, I got promoted, and everything I'd built stopped holding."</div>
+        <div class="problem-card-mode">Trigger: Life-stage complexity outpaces pre-diagnosis scaffolding</div>
+      </div>
+      <div class="problem-card anim-up d3">
+        <div class="problem-card-quote">"I've tried everything — Notion, calendars, planners, apps. I get two weeks in and then something breaks and I never go back."</div>
+        <div class="problem-card-mode">Pattern: System collapse · not motivation failure · survivability failure</div>
+      </div>
+      <div class="problem-card anim-up d4">
+        <div class="problem-card-quote">"The problem isn't that I don't know what to do. It's that when I'm overwhelmed, I can't access what I know."</div>
+        <div class="problem-card-mode">Root cause: Executive dysfunction at exactly the moment the system is needed most</div>
+      </div>
+      <div class="problem-card anim-up d5">
+        <div class="problem-card-quote">"Some of the coping mechanisms I built before my diagnosis — they weren't helping anymore. But I couldn't see them clearly enough to stop."</div>
+        <div class="problem-card-mode">Insight: Pre-diagnosis compensations calcify · become obstacles · require audit</div>
+      </div>
+    </div>
+
+    <div class="problem-bridge anim-up d6">
+      <p><strong>This is not a character flaw and it is not a motivation problem.</strong> It is a system survivability problem. The scaffolding that held your life together was built for a different version of your life — and nobody gave you a process for rebuilding it when the load changed.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     THE BRIDGE LAYER
+     ═══════════════════════════════════════ -->
+<hr class="section-divider">
+<section style="padding:96px 0" id="bridge">
+  <div class="container">
+    <div class="section-header anim-up">
+      <span class="label">Where the O/S Lives</span>
+      <h2>Medication helps. Therapy helps. <em>Neither builds your system.</em></h2>
+      <p>There is a gap between what clinical care provides and what daily life requires. The ADHD O/S is designed to operate in that gap.</p>
+    </div>
+
+    <div class="bridge-card anim-up d2">
+      <div class="bridge-card-glow"></div>
+      <div class="bridge-card-inner">
+        <div class="bridge-left">
+          <span class="label">The Bridge Layer</span>
+          <h2 style="margin-top:20px;">The space between <em>clinical support</em> and daily execution.</h2>
+          <p>Medication can improve the capacity to focus. It does not determine what to focus on, how to structure the day, or how to build durable behavioral patterns in the flow of real life.</p>
+          <p>Therapy and CBT provide insight, tools, and accountability — but their cadence is weekly at best. That leaves an enormous amount of daily life unscaffolded: transitions, priorities, task initiation, household coordination, and the recovery after things fall apart.</p>
+          <p><strong>The ADHD O/S operates in that in-between space.</strong> It translates treatment capacity and therapeutic insight into repeatable daily structure — and it is designed to survive the weeks when clinical support is unavailable, disrupted, or simply not enough on its own.</p>
+          <div class="bridge-disclaimer">
+            <p>NOT THERAPY · NOT DIAGNOSIS · NOT MEDICATION MANAGEMENT · The ADHD O/S is non-clinical scaffolding. It does not replace clinical care — it complements it. If you need clinical support, we will point you to appropriate resources.</p>
+          </div>
+        </div>
+        <div class="bridge-right">
+          <h3>Three layers — what each one does and doesn't do</h3>
+          <ul class="bridge-layers">
+            <li class="bridge-layer">
+              <div class="bridge-layer-icon clinical">💊</div>
+              <div class="bridge-layer-text">
+                <div class="bridge-layer-name">Medication</div>
+                <div class="bridge-layer-desc">Improves attentional capacity and reduces impulsivity. Does not create priorities, structure transitions, or build behavioral patterns. Access is also fragile — 71.5% of stimulant users report difficulty getting prescriptions filled.</div>
+              </div>
+            </li>
+            <li class="bridge-layer">
+              <div class="bridge-layer-icon clinical">🧠</div>
+              <div class="bridge-layer-text">
+                <div class="bridge-layer-name">Therapy / CBT</div>
+                <div class="bridge-layer-desc">Provides strategies, reflection, and accountability. Happens weekly or bi-weekly. Leaves the large majority of daily life — every transition, every initiation, every moment of overwhelm — unscaffolded between sessions.</div>
+              </div>
+            </li>
+            <li class="bridge-layer">
+              <div class="bridge-layer-icon gap">⚡</div>
+              <div class="bridge-layer-text">
+                <div class="bridge-layer-name">The gap</div>
+                <div class="bridge-layer-desc">Real life happens in the space between appointments. Priorities, transitions, household coordination, task initiation, and recovery after breakdown — this is where most ADHD adults are managing entirely alone.</div>
+              </div>
+            </li>
+            <li class="bridge-layer">
+              <div class="bridge-layer-icon os">⚙️</div>
+              <div class="bridge-layer-text">
+                <div class="bridge-layer-name">The ADHD O/S</div>
+                <div class="bridge-layer-desc">Non-clinical execution scaffolding designed to operate in the gap. Converts treatment capacity and therapeutic insight into daily behavioral structure — and rebuilds when things fall apart.</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     THE SYSTEM
+     ═══════════════════════════════════════ -->
+<hr class="section-divider">
+<section style="padding:96px 0" id="system">
+  <div class="container">
+    <div class="section-header anim-up">
+      <span class="label">The System</span>
+      <h2>Seven layers. One coherent <em>operating architecture.</em></h2>
+      <p>Every component has a specific job. None of them require new apps, new hardware, or willpower to sustain. They run on the Apple ecosystem you already carry.</p>
+    </div>
+
+    <div class="arch-grid anim-up d2">
+      <div class="arch-col">
+        <div class="arch-accent-bar"></div>
+        <div class="arch-num">Principle 01</div>
+        <h3>Externalize everything</h3>
+        <p>Working memory is the first thing ADHD depletes under load. Time, priorities, commitments, and sequences live outside your head — in Calendar, Reminders, and Notes — so the cognitive cost of holding them doesn't compound.</p>
+      </div>
+      <div class="arch-col">
+        <div class="arch-accent-bar"></div>
+        <div class="arch-num">Principle 02</div>
+        <h3>Reduce friction at the point of action</h3>
+        <p>Every additional step between intention and action is a place the system can fail. The O/S is designed to make the right action the easiest action — at the exact moment when cognitive resources are lowest.</p>
+      </div>
+      <div class="arch-col">
+        <div class="arch-accent-bar warm"></div>
+        <div class="arch-num">Principle 03</div>
+        <h3>Re-entry over perfection</h3>
+        <p>The system assumes dropout. Not as a failure case — as an architectural requirement. Recovery paths are built in from the start. The question is never whether you dropped the system. It's how fast you can get back.</p>
+      </div>
+    </div>
+
+    <div class="reentry-callout violet anim-up d3">
+      <div class="reentry-icon">↩</div>
+      <p><strong>The weekly review is the repair loop.</strong> One 10-minute Shortcut every Sunday resets the flags, archives the week, and confirms next week's structure. The system doesn't degrade — it self-corrects on a weekly cadence, automatically.</p>
+    </div>
+
+    <!-- SYSTEM COMPONENT CARDS -->
+    <div style="margin-top:48px;">
+      <div style="font-family:var(--font-mono);font-size:.6875rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:20px;">Seven system layers — tap any to read the companion guide</div>
+    </div>
+
+    <div class="system-grid anim-up d4">
+
+      <a class="system-card" href="apple-notes.html">
+        <div class="system-card-eyebrow">
+          <div class="system-card-icon">📝</div>
+          <span class="system-card-layer">Storage Layer</span>
+        </div>
+        <h3>Apple Notes</h3>
+        <p>The external brain. Six folders. One Today note. A capture protocol that routes thoughts to the right place in under four seconds — without opening an app deliberately.</p>
+        <span class="system-card-link">Read the companion guide →</span>
+      </a>
+
+      <a class="system-card" href="reminders-system.html">
+        <div class="system-card-eyebrow">
+          <div class="system-card-icon">🔔</div>
+          <span class="system-card-layer">Action Cueing Layer</span>
+        </div>
+        <h3>Reminders — The Cueing System</h3>
+        <p>Four lists. Not a task manager — a cueing system. Flags for today. Inbox for raw captures. Scheduled for time-locked actions. Groceries for household coordination.</p>
+        <span class="system-card-link">Read the companion guide →</span>
+      </a>
+
+      <a class="system-card" href="apple-shortcuts.html">
+        <div class="system-card-eyebrow">
+          <div class="system-card-icon">⚡</div>
+          <span class="system-card-layer">Ritual Layer</span>
+        </div>
+        <h3>Apple Shortcuts — Pre-made Decisions</h3>
+        <p>Four Shortcuts. Each packages a transition decision made once, in a calm moment, so it doesn't need to be made again at the worst moment. Start day. End day. Goodnight. Weekly review.</p>
+        <span class="system-card-link">Read the companion guide →</span>
+      </a>
+
+      <a class="system-card" href="siri-homepod.html">
+        <div class="system-card-eyebrow">
+          <div class="system-card-icon">🔊</div>
+          <span class="system-card-layer">Voice + Ambient Layer</span>
+        </div>
+        <h3>Siri + HomePod</h3>
+        <p>Siri captures without unlocking a screen. HomePod changes the acoustic character of the room — cueing transitions environmentally, without a notification that can be swiped.</p>
+        <span class="system-card-link">Read the companion guide →</span>
+      </a>
+
+      <a class="system-card" href="visual-display.html">
+        <div class="system-card-eyebrow">
+          <div class="system-card-icon">🖥️</div>
+          <span class="system-card-layer">Environment Layer</span>
+        </div>
+        <h3>Visual Display — Pi + Apple TV</h3>
+        <p>The household calendar, permanently visible in your kitchen. The Apple TV Screensaver shifting the room visually at bedtime. Shared family context that requires no phone unlock.</p>
+        <span class="system-card-link">Read the companion guide →</span>
+      </a>
+
+      <div class="system-card" style="cursor:default;">
+        <div class="system-card-eyebrow">
+          <div class="system-card-icon">⌚</div>
+          <span class="system-card-layer">Haptic Layer</span>
+        </div>
+        <h3>Apple Watch — Body-Level Cueing</h3>
+        <p>Time awareness at a glance without screen contact. Haptic alerts that fire on the wrist — at the point of action, not in a notification stack. Raise-to-speak capture without reaching for a phone.</p>
+        <span class="system-card-link" style="opacity:.4;pointer-events:none;">Companion guide coming soon</span>
+      </div>
+
+    </div>
+
+    <div class="reentry-callout anim-up d5" style="margin-top:24px;">
+      <div class="reentry-icon">📅</div>
+      <p><strong>iCloud Calendar is the time layer</strong> that connects everything. It feeds the Raspberry Pi display, the morning Shortcut briefing via HomePod, the Goodnight confirmation, and the weekly review. Every layer reads from one source of truth — not five apps trying to stay in sync.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     COHORT / WAITLIST
+     ═══════════════════════════════════════ -->
+<hr class="section-divider">
+<section style="padding:96px 0" id="cohort">
+  <div class="container">
+    <div class="cohort-card anim-up">
+      <div class="cohort-card-glow"></div>
+      <div class="cohort-inner">
+        <div class="cohort-left">
+          <span class="label label-warm">May 2026 Cohort</span>
+          <h2 style="margin-top:20px;">The first cohort is <em>small by design.</em></h2>
+          <p>The ADHD O/S is not a self-serve app. The first cohort is a small group of diagnosed adults who are ready to build — and maintain — a real execution system for their actual life.</p>
+          <p>What you'll build over eight weeks: a fully configured Apple ecosystem layer, a personal system audit that retires what's no longer working, and the weekly rhythm that keeps the system alive when real life hits.</p>
+          <ul class="cohort-includes">
+            <li>Full system architecture across Calendar, Notes, Reminders, Shortcuts, Siri, HomePod, and the visual display layer</li>
+            <li>Personal scaffolding audit — what to keep, what to retire, what to build from scratch</li>
+            <li>Raspberry Pi display build or Dakboard configuration — household calendar visible without a phone</li>
+            <li>Weekly review ritual — the repair loop that keeps the system from drifting into abandonment</li>
+            <li>All five companion guides — architecture documentation you own and can operate independently</li>
+          </ul>
+          <p style="font-family:var(--font-mono);font-size:.75rem;color:var(--text-muted);letter-spacing:.04em;">This is not for beginners. It is for people who have tried, who have failed, and who are ready to build something that survives.</p>
+        </div>
+        <div class="cohort-right">
+          <div class="cohort-block">
+            <div class="cohort-block-label">Cohort opens</div>
+            <div class="cohort-block-value">May 2026</div>
+            <div class="cohort-block-sub">Limited founding cohort. Waitlist members get first access and founding member pricing.</div>
+          </div>
+          <div class="cohort-block">
+            <div class="cohort-block-label">Format</div>
+            <div class="cohort-block-value">8 Weeks</div>
+            <div class="cohort-block-sub">Small group. Structured builds. Weekly accountability. Designed for working parents with no margin for extra overhead.</div>
+          </div>
+          <div class="cohort-cta-area">
+            <p>Join the waitlist to get notified first, receive the pre-launch companion guides, and lock in founding member access.</p>
+            <div class="waitlist-input-row">
+              <input class="waitlist-input" type="email" placeholder="your@email.com">
+              <button class="waitlist-btn">Join Waitlist</button>
+            </div>
+            <div class="waitlist-micro">No spam. No ADHD influencer content. Just the system — when it's ready.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCIENCE & SAFETY
+     ═══════════════════════════════════════ -->
+<hr class="section-divider">
+<section style="padding:96px 0" id="science">
+  <div class="container">
+    <div class="section-header anim-up">
+      <span class="label">Science &amp; Safety</span>
+      <h2>Barkley-grounded. <em>Claims-governed. No slop.</em></h2>
+      <p>The ADHD O/S is built on the scientific literature of ADHD as executive dysfunction — primarily the work of Dr. Russell A. Barkley. Every design decision has a source. Every claim has a guardrail.</p>
+    </div>
+
+    <div class="science-grid anim-up d2">
+      <div class="science-card">
+        <div class="science-card-num">01 · Theoretical grounding</div>
+        <p><strong>ADHD as executive dysfunction, not attention deficit.</strong> The system is built on Barkley's framework: ADHD is primarily a failure of behavioral inhibition and self-regulation — not an inability to pay attention. Every O/S component addresses a specific executive function deficit: working memory, time perception, emotional regulation, or initiation.</p>
+      </div>
+      <div class="science-card">
+        <div class="science-card-num">02 · Non-clinical boundary</div>
+        <p><strong>This is scaffolding, not treatment.</strong> The ADHD O/S does not diagnose, treat, or manage any clinical condition. It complements clinical care by providing the execution infrastructure that clinical care does not supply. This boundary is built into every component — not just stated in a disclaimer.</p>
+      </div>
+      <div class="science-card">
+        <div class="science-card-num">03 · Claims hygiene</div>
+        <p><strong>No outcome promises we can't back.</strong> The 2025 systematic review literature on digital ADHD interventions describes potential benefit with inconclusive overall evidence. The O/S makes no efficacy claims beyond what the evidence supports: friction reduction, externalization of executive functions, and structured re-entry after system breakdown.</p>
+      </div>
+    </div>
+
+    <div class="disclaimer-block anim-up d3">
+      <p><strong>Not therapy. Not diagnosis. Not medication management.</strong> The ADHD O/S is non-clinical scaffolding designed to help diagnosed adults build and maintain an execution layer for real life. It is grounded in ADHD science and designed to complement — not replace — clinical care. If you are in crisis or need clinical support, we will point you toward appropriate resources.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     FOUNDER
+     ═══════════════════════════════════════ -->
+<hr class="section-divider">
+<section style="padding:96px 0" id="about">
+  <div class="container">
+    <div class="founder-card anim-up">
+      <div class="founder-left">
+        <span class="label">About</span>
+        <h2>Built by someone who <em>is the ICP.</em></h2>
+        <p>I spent years building coping mechanisms before I had a diagnosis. Some of them worked. I was high-functioning — systems-oriented, capable, reliably getting things done. I had no idea I was compensating. I just thought this was how hard everyone had to work.</p>
+        <p>Then the life those mechanisms were built for changed. <strong>Children. A Series D startup, managed remotely. A first-period colonial home built in 1715 — under active restoration.</strong> Three simultaneous systems each demanding executive function, coordination, and follow-through. The scaffolding I'd built for one life didn't scale to three lives running in parallel.</p>
+        <p>The diagnosis came later. What it gave me wasn't a system — it gave me a map of what I'd already been doing. I could finally see which compensations were still load-bearing, which had calcified into habits that were actively working against me, and what I needed to rebuild from the ground up.</p>
+        <p><strong>The hardest part wasn't building new habits. It was retiring the ones that had stopped working.</strong></p>
+        <p>The ADHD O/S is the formalized version of that rebuild — made rigorous enough to be genuinely useful to anyone who shares the same constraints.</p>
+      </div>
+      <div class="founder-right">
+        <h3>Design principles</h3>
+        <ul class="values-list">
+          <li>
+            <span class="value-title">Durable over flashy</span>
+            <span class="value-sub">If the system doesn't survive a bad week, it isn't a system. Everything is designed around that assumption.</span>
+          </li>
+          <li>
+            <span class="value-title">Audit before you build</span>
+            <span class="value-sub">Pre-diagnosis compensations need examination — some are load-bearing, some are obstacles. You have to know the difference before you build on top of them.</span>
+          </li>
+          <li>
+            <span class="value-title">Systems over willpower</span>
+            <span class="value-sub">Willpower is a depletable resource that depletes fastest under load. The O/S is designed to reduce the demand on it, not increase it.</span>
+          </li>
+          <li>
+            <span class="value-title">Re-entry over perfection</span>
+            <span class="value-sub">The question is never whether you dropped the system. It's how fast you can restart. That restart path is built in from day one.</span>
+          </li>
+          <li>
+            <span class="value-title">Evidence over enthusiasm</span>
+            <span class="value-sub">Skeptical of ADHD influencer content. Barkley-grounded. No outcome promises that aren't backed by the literature.</span>
+          </li>
+          <li>
+            <span class="value-title">Honest about the gap</span>
+            <span class="value-sub">Medication helps. Therapy helps. Neither builds your daily system. The O/S is the bridge between treatment and execution — and it doesn't pretend to be more than that.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     FAQ
+     ═══════════════════════════════════════ -->
+<hr class="section-divider">
+<section style="padding:96px 0">
+  <div class="container">
+    <div class="section-header anim-up">
+      <span class="label">FAQ</span>
+      <h2>Questions worth <em>answering honestly.</em></h2>
+    </div>
+    <div class="faq-grid">
+      <div class="faq-item anim-up d2">
+        <div class="faq-q">Is this therapy or a clinical tool?</div>
+        <div class="faq-a">No. The ADHD O/S is non-clinical scaffolding. It does not diagnose, treat, or manage ADHD as a medical condition. If you need psychiatric support, medication management, or therapy, we'll point you to appropriate resources — that's built into the governance model, not an afterthought.</div>
+      </div>
+      <div class="faq-item anim-up d3">
+        <div class="faq-q">Do I need a formal diagnosis?</div>
+        <div class="faq-a">A diagnosis is strongly recommended. The system is designed around the clinical reality of ADHD as executive dysfunction. Working with a clear diagnosis is more honest, more precise, and more likely to produce durable results than treating it as a generic productivity problem.</div>
+      </div>
+      <div class="faq-item anim-up d4">
+        <div class="faq-q">I've tried Notion, Todoist, and every other system. Why is this different?</div>
+        <div class="faq-a">Those are tools. <strong>This is an execution layer.</strong> Tools require self-consistency to maintain consistency — which is the exact thing ADHD depletes. The O/S is designed around survivability: minimum components, maximum friction reduction, and a weekly repair loop that catches drift before it becomes abandonment.</div>
+      </div>
+      <div class="faq-item anim-up d5">
+        <div class="faq-q">I have coping mechanisms that have worked for years. Do I have to throw them out?</div>
+        <div class="faq-a">No — and this is one of the most important questions. The O/S starts with an audit: what's load-bearing, what's become an obstacle, and what needs to be rebuilt. Pre-diagnosis compensations are often partially correct. The work is separating the ones worth keeping from the ones that have calcified into habits that are working against you.</div>
+      </div>
+      <div class="faq-item anim-up d6">
+        <div class="faq-q">Do I need to buy new hardware or apps?</div>
+        <div class="faq-a">No. The system is built entirely on tools you likely already have: iPhone, Apple Watch, HomePod, Apple TV, and a Raspberry Pi (optional — roughly $35–$80, or Dakboard as a free alternative). No subscriptions. No new apps. No ecosystem lock-in beyond what you're already in.</div>
+      </div>
+      <div class="faq-item anim-up d7">
+        <div class="faq-q">What if I drop the system during a hard week?</div>
+        <div class="faq-a"><strong>That's expected — and designed for.</strong> The system assumes dropout. The weekly review Shortcut fires automatically on Sunday regardless of how the week went. The re-entry path is three steps: open Reminders, re-flag three items, confirm next week's calendar. Dropout is not failure here. It's input.</div>
+      </div>
+      <div class="faq-item anim-up d8">
+        <div class="faq-q">Is this just for Apple users?</div>
+        <div class="faq-a">Yes, currently. The system is built on tight Apple ecosystem integration — iCloud Calendar, Reminders, Notes, Shortcuts, HomePod, and Apple Watch — because that integration is what makes the friction reduction possible. An Android or cross-platform version would require a fundamentally different architecture.</div>
+      </div>
+      <div class="faq-item anim-up d8">
+        <div class="faq-q">How is this different from ADHD coaching?</div>
+        <div class="faq-a">Coaching without a protocol is highly dependent on the individual coach and session continuity. The ADHD O/S is protocolized, artifact-producing, and documented — you build something you own and can operate independently between sessions, on bad weeks, and when support isn't available.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     FINAL CTA
+     ═══════════════════════════════════════ -->
+<hr class="section-divider">
+<section class="final-cta">
+  <div class="final-cta-glow"></div>
+  <div class="container">
+    <div class="final-cta-card anim-up">
+      <span class="label">May 2026 Cohort</span>
+      <h2>Build the system that<br><em>survives real life.</em></h2>
+      <p>Not another tool. Not another framework you'll abandon in two weeks. A real-world execution layer built for how your brain actually works — and how real life actually disrupts it.</p>
+      <div class="final-cta-btns">
+        <a class="btn-primary" href="#cohort">Join the Waitlist →</a>
+        <a class="btn-secondary" href="apple-shortcuts.html">Read the Shortcuts Guide</a>
+        <a class="btn-secondary" href="siri-homepod.html">Read the Siri + HomePod Guide</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     FOOTER
+     ═══════════════════════════════════════ -->
+<hr class="section-divider">
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a class="logo" href="#">
+          <div class="logo-mark">A/O</div>
+          <span class="logo-text">The ADHD <em>O/S</em></span>
+        </a>
+        <p>Non-clinical execution scaffolding for diagnosed adults. Evidence-governed. Re-entry-first. Built to survive real life.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Companion Guides</h4>
+        <ul>
+          <li><a href="apple-notes.html">Apple Notes</a></li>
+          <li><a href="reminders-system.html">Reminders System</a></li>
+          <li><a href="apple-shortcuts.html">Apple Shortcuts</a></li>
+          <li><a href="siri-homepod.html">Siri + HomePod</a></li>
+          <li><a href="visual-display.html">Visual Display</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#system">The System</a></li>
+          <li><a href="#bridge">The Bridge Layer</a></li>
+          <li><a href="#cohort">May 2026 Cohort</a></li>
+          <li><a href="#science">Science &amp; Safety</a></li>
+          <li><a href="#about">About</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Brand Family</h4>
+        <ul>
+          <li><a href="https://inflectionengine.com" target="_blank">InflectionEngine</a></li>
+          <li><a href="https://kevinjaquith.com" target="_blank">Kevin Jaquith</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 The ADHD O/S · theadhdos.com</span>
+      <p class="footer-disclaimer">Not therapy. Not diagnosis. Not medication management. The ADHD O/S is non-clinical scaffolding. For clinical support, please consult a licensed professional.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Scroll progress bar
+  const bar = document.getElementById('scrollBar');
+  window.addEventListener('scroll', () => {
+    const pct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+    bar.style.transform = `scaleX(${pct})`;
+  }, { passive: true });
+</script>
+
+</body>
+</html>
