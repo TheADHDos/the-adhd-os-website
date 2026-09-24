@@ -606,11 +606,58 @@
 </div>
 
 <script>
+  // ——— O/S API CLIENT (cross-device sync via /api/*) ———
+  // First visit on each device must include ?k=<OS_API_TOKEN>; it is saved
+  // locally and stripped from the address bar. Automation URLs keep ?k= so
+  // every device stays authorized.
+  const OS_API = (() => {
+    const TOKEN_KEY = 'os_api_token';
+    const params = new URLSearchParams(location.search);
+    const src = params.get('src') || 'manual';
+    try {
+      const k = params.get('k');
+      if (k) {
+        localStorage.setItem(TOKEN_KEY, k);
+        params.delete('k');
+        const qs = params.toString();
+        history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+      }
+    } catch (e) {}
+
+    function token() {
+      try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
+    }
+
+    async function call(path, body) {
+      const t = token();
+      if (!t) throw new Error('No sync key on this device');
+      const res = await fetch(path, {
+        method: body ? 'POST' : 'GET',
+        headers: body ? { 'x-os-token': t, 'Content-Type': 'application/json' } : { 'x-os-token': t },
+        body: body ? JSON.stringify(body) : undefined,
+        keepalive: !!body
+      });
+      if (!res.ok) throw new Error('API ' + res.status);
+      return res.json();
+    }
+
+    // Local calendar date as YYYY-MM-DD. rollbackBeforeHour lets a 1 AM
+    // shutdown still count as the previous day.
+    function localDate(rollbackBeforeHour = 0) {
+      const d = new Date();
+      if (d.getHours() < rollbackBeforeHour) d.setDate(d.getDate() - 1);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    return { call, localDate, src, hasToken: () => !!token() };
+  })();
+
   // ——— STATE ———
   let currentPhase = 'phase-0';
   let selectedState = null;
   let firstMove = null;
   let wasRerouted = false;
+  let shutdownDate = null;   // links this launch to last night's shutdown record
 
   const titles = {
     '0':          'Good morning. Here\'s your <em>first move.</em>',
@@ -646,20 +693,37 @@
 
   // ——— LOAD LAST NIGHT'S SESSION ———
   async function loadLastSession() {
+    let status = 'none';
+    // 1. Server: works across devices (Mac at night, phone in the morning)
     try {
-      // Fetch recent Netlify form submissions
-      const res = await fetch('/.netlify/functions/get-last-session');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.firstMove) {
-          firstMove = data.firstMove;
-          renderFirstMove(firstMove, data.date);
-          return;
-        }
+      const data = await OS_API.call('/api/latest');
+      status = data.status;
+      if (data.firstMove) {
+        firstMove = data.firstMove;
+        shutdownDate = data.date;
+        renderFirstMove(firstMove, formatDate(data.date));
+        return;
+      }
+    } catch(e) { console.error('Sync error:', e); }
+
+    // 2. Fallback: same-device localStorage written by the Shutdown Sequence
+    try {
+      const local = JSON.parse(localStorage.getItem('shutdown_firstmove') || 'null');
+      if (local && local.firstMove && Date.now() < local.expires) {
+        firstMove = local.firstMove;
+        renderFirstMove(firstMove, 'last night');
+        return;
       }
     } catch(e) {}
-    // Fallback: show manual entry
-    renderManualEntry();
+
+    // 3. Nothing found: ask for today's first move
+    renderManualEntry(status);
+  }
+
+  function formatDate(iso) {
+    if (!iso) return 'last night';
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
   }
 
   function renderFirstMove(move, date) {
@@ -675,11 +739,14 @@
     document.getElementById('reroute-btn-0').style.display = 'block';
   }
 
-  function renderManualEntry() {
+  function renderManualEntry(status) {
     const display = document.getElementById('first-move-display');
+    const lead = status === 'skipped'
+      ? 'You chose rest last night. Good call. What\'s the first move today?'
+      : 'No session found from last night. What\'s the first move today?';
     display.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:10px;">
-        <div class="phase-sub">No session found from last night. What's the first move today?</div>
+        <div class="phase-sub">${lead}</div>
         <textarea id="manual-move-input" placeholder="The first move today is…" rows="2" style="min-height:70px;"></textarea>
       </div>
     `;
@@ -794,6 +861,15 @@
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString()
       });
+      OS_API.call('/api/launch', {
+        localDate: OS_API.localDate(),
+        state: state || 'unknown',
+        firstMove: firstMove || '',
+        rerouted: wasRerouted,
+        fromShutdown: shutdownDate,
+        src: OS_API.src
+      }).catch(e => console.error('Sync error:', e));
+
       if (res.ok) {
         status.textContent = '✓ Session logged to Netlify.';
         status.className = 'submit-status ok';

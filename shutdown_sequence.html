@@ -636,6 +636,52 @@
 </div>
 
 <script>
+  // ——— O/S API CLIENT (cross-device sync via /api/*) ———
+  // First visit on each device must include ?k=<OS_API_TOKEN>; it is saved
+  // locally and stripped from the address bar. Automation URLs keep ?k= so
+  // every device stays authorized.
+  const OS_API = (() => {
+    const TOKEN_KEY = 'os_api_token';
+    const params = new URLSearchParams(location.search);
+    const src = params.get('src') || 'manual';
+    try {
+      const k = params.get('k');
+      if (k) {
+        localStorage.setItem(TOKEN_KEY, k);
+        params.delete('k');
+        const qs = params.toString();
+        history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+      }
+    } catch (e) {}
+
+    function token() {
+      try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
+    }
+
+    async function call(path, body) {
+      const t = token();
+      if (!t) throw new Error('No sync key on this device');
+      const res = await fetch(path, {
+        method: body ? 'POST' : 'GET',
+        headers: body ? { 'x-os-token': t, 'Content-Type': 'application/json' } : { 'x-os-token': t },
+        body: body ? JSON.stringify(body) : undefined,
+        keepalive: !!body
+      });
+      if (!res.ok) throw new Error('API ' + res.status);
+      return res.json();
+    }
+
+    // Local calendar date as YYYY-MM-DD. rollbackBeforeHour lets a 1 AM
+    // shutdown still count as the previous day.
+    function localDate(rollbackBeforeHour = 0) {
+      const d = new Date();
+      if (d.getHours() < rollbackBeforeHour) d.setDate(d.getDate() - 1);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    return { call, localDate, src, hasToken: () => !!token() };
+  })();
+
   // ——— STATE ———
   let currentPhase = 0;
   let generatedReframe = null;  // Claude-generated reframe, carried through to Phase 6
@@ -760,6 +806,8 @@
       const payload = { skipped: true, date: dateString() };
       localStorage.setItem('shutdown_skipped', JSON.stringify(payload));
     } catch(e) {}
+    syncShutdown('skipped', { wins: [], dump: '', firstMove: '', rating: null })
+      .catch(e => console.error('Sync error:', e));
     document.getElementById('phase-' + currentPhase).classList.remove('active');
     document.getElementById('phase-7').classList.add('active');
     document.getElementById('card-title').innerHTML = 'Rest is the <em>work.</em>';
@@ -813,6 +861,9 @@
         firstMove: capture, expires: tomorrow.getTime(), mvf: true
       }));
     } catch(e) {}
+
+    syncShutdown('urgent', { firstMove: capture, dump: capture, wins: [] })
+      .catch(e => console.error('Sync error:', e));
 
     const body = new URLSearchParams({
       'form-name':  'shutdown-sequence',
@@ -980,6 +1031,26 @@
     selectedRating = val;
   }
 
+  // ——— CROSS-DEVICE SYNC ———
+  // Saves the session to /api/shutdown so Morning Launch can read it on any device.
+  // Netlify Forms submissions continue unchanged as the backup log.
+  function syncShutdown(status, overrides = {}) {
+    const wins = Array.from(document.querySelectorAll('.win-row input'))
+      .map(i => i.value.trim()).filter(Boolean);
+    const payload = Object.assign({
+      status,
+      localDate: OS_API.localDate(4),
+      closeTime: closeTime || nowString(),
+      wins,
+      dump: document.getElementById('braindump').value.trim(),
+      reframe: generatedReframe || '',
+      firstMove: firstMoveDecision || '',
+      rating: selectedRating,
+      src: OS_API.src
+    }, overrides);
+    return OS_API.call('/api/shutdown', payload);
+  }
+
   // ——— NETLIFY SUBMIT ———
   async function submitToNetlify(skipRating) {
     const btn = document.getElementById('submit-btn');
@@ -1012,7 +1083,12 @@
       });
 
       if (res.ok) {
-        status.textContent = '✓ Session logged to Netlify.';
+        let synced = true;
+        try { await syncShutdown('completed', { rating: skipRating ? null : selectedRating }); }
+        catch (e) { synced = false; console.error('Sync error:', e); }
+        status.textContent = synced
+          ? '✓ Session logged. Your first move will be waiting in the morning.'
+          : '✓ Session logged. Not synced to Morning Launch — open this page from your automation link (it carries the sync key).';
         status.className = 'submit-status ok';
         status.style.display = 'block';
         clearInterval(timerInterval);
