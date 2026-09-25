@@ -4,3 +4,13 @@
 
 [[plugins]]
   package = "@netlify/plugin-functions-install-core"
+
+[[redirects]]
+  from = "/night_shift_closer"
+  to = "/shutdown_sequence"
+  status = 301
+
+[[redirects]]
+  from = "/night_shift_closer.html"
+  to = "/shutdown_sequence"
+  status = 301
