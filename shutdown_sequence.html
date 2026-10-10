@@ -483,7 +483,7 @@
       <button class="btn-ghost" onclick="goTo(3)" style="font-size:0.9375rem;">Nothing running — skip →</button>
     </div>
 
-    <!-- Phase 3: Reframe (AI-generated) -->
+    <!-- Phase 3: Reflection with optional AI -->
     <div class="phase" id="phase-3">
       <div>
         <div class="phase-eyebrow">Step 3 of 5 — Handoff</div>
@@ -491,21 +491,27 @@
       </div>
       <div class="summary-block" id="summary-block" style="display:none"></div>
 
+      <div class="phase-sub" id="ai-reflection-disclosure">
+        Optional: generate a personalized reflection with AI. If you choose this, your daily wins and brain-dump text are sent to our Netlify function, which forwards them to Anthropic’s Claude API. Only choose this if you’re comfortable sharing these entries for AI processing. This choice applies to this reflection only.
+        You can close the day with the standard reflection without sending entries to Anthropic. Your routine’s existing logging and sync still apply.
+      </div>
+      <button class="btn-ghost" id="ai-reflection-btn" aria-describedby="ai-reflection-disclosure" onclick="fetchReframe(true)">Share these entries and generate an AI reflection</button>
+
       <!-- Loading state -->
-      <div class="reframe-loading" id="reframe-loading">
+      <div class="reframe-loading" id="reframe-loading" role="status" style="display:none">
         <div class="reframe-spinner"></div>
         Reading your day…
       </div>
 
       <!-- Generated reframe -->
-      <div class="reframe-generated" id="reframe-generated"></div>
+      <div class="reframe-generated" id="reframe-generated" role="status" style="display:block">Sleep is the work.</div>
 
       <!-- Fallback on error -->
-      <div class="reframe-error" id="reframe-error">
+      <div class="reframe-error" id="reframe-error" role="status">
         Unable to generate a personalized reframe right now. Close the day anyway — you showed up.
       </div>
 
-      <button class="btn-primary" id="close-day-btn" onclick="closeDay()" disabled>Close the day — good night.</button>
+      <button class="btn-primary" id="close-day-btn" onclick="closeDay()">Close the day without AI — good night.</button>
     </div>
 
     <!-- Phase 4: First Move Decision -->
@@ -685,6 +691,8 @@
   // ——— STATE ———
   let currentPhase = 0;
   let generatedReframe = null;  // Claude-generated reframe, carried through to Phase 6
+  let reframePending = false;
+  let reframeRequest = 0;
   let selectedRating = null;
   let closeTime = null;
 
@@ -746,7 +754,7 @@
 
     if (n === 3) {
       buildSummary();
-      fetchReframe();   // kick off API call when entering Phase 3
+      // Entering reflection never transmits journal entries for AI processing.
     }
 
     currentPhase = n;
@@ -757,7 +765,12 @@
   }
 
   // ——— AI REFRAME ———
-  async function fetchReframe() {
+  async function fetchReframe(consent = false) {
+    if (consent !== true || currentPhase !== 3 || reframePending) return;
+    reframePending = true;
+    const request = ++reframeRequest;
+    const aiBtn = document.getElementById('ai-reflection-btn');
+    aiBtn.disabled = true;
     const wins = Array.from(document.querySelectorAll('.win-row input'))
       .map(i => i.value.trim()).filter(Boolean);
     const dump = document.getElementById('braindump').value.trim();
@@ -771,19 +784,22 @@
     loadingEl.style.display  = 'flex';
     generatedEl.style.display = 'none';
     errorEl.style.display    = 'none';
-    btn.disabled = true;
+    btn.disabled = false;
 
     try {
       const res = await fetch('/.netlify/functions/reframe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wins, dump })
+        body: JSON.stringify({ wins, dump, aiConsent: true })
       });
 
       if (!res.ok) throw new Error('Function error: ' + res.status);
 
       const data = await res.json();
-      generatedReframe = data.reframe;
+      if (request !== reframeRequest || currentPhase !== 3) return;
+      if (typeof data.reframe !== 'string' || !data.reframe.trim()) throw new Error('Invalid reflection');
+      generatedReframe = data.reframe.trim();
+      btn.textContent = 'Close the day — good night.';
 
       loadingEl.style.display   = 'none';
       generatedEl.style.display = 'block';
@@ -791,12 +807,17 @@
       btn.disabled = false;
 
     } catch (err) {
-      console.error('Reframe fetch error:', err);
+      if (request !== reframeRequest || currentPhase !== 3) return;
       generatedReframe = 'Sleep is the work.';
 
       loadingEl.style.display  = 'none';
       errorEl.style.display    = 'block';
       btn.disabled = false;
+    } finally {
+      if (request === reframeRequest) {
+        reframePending = false;
+        aiBtn.disabled = false;
+      }
     }
   }
 
@@ -996,6 +1017,9 @@
 
   // ——— CLOSE DAY — carries generated reframe to Phase 6 ———
   function closeDay() {
+    // Ignore a late AI response if the user continues with the standard reflection.
+    reframeRequest++;
+    reframePending = false;
     closeTime = nowString();
     // Use Claude-generated reframe; fall back to default if something went wrong
     const frame = generatedReframe || 'Sleep is the work.';

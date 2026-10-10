@@ -12,6 +12,13 @@ exports.handler = async function (event) {
 
   try {
     const body = JSON.parse(event.body);
+    if (body.aiConsent !== true) {
+      return { statusCode: 400, body: "Explicit AI consent required" };
+    }
+    if ((body.wins !== undefined && (!Array.isArray(body.wins) || body.wins.some(w => typeof w !== "string"))) ||
+        (body.dump !== undefined && typeof body.dump !== "string")) {
+      return { statusCode: 400, body: "Invalid entries" };
+    }
     wins = body.wins || [];
     dump = body.dump || "";
   } catch (e) {
@@ -68,7 +75,7 @@ Rules:
       body: JSON.stringify({ reframe }),
     };
   } catch (err) {
-    console.error("Claude API error:", err);
+    console.error("Claude API request failed");
     return {
       statusCode: 500,
       headers: { "Content-Type": "application/json" },
